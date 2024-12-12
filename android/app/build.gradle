@@ -1,0 +1,79 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+
+// Load keystore properties if the file exists
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else {
+    // If not using a signed build or the file does not exist, you may leave this as is.
+    println "WARNING: key.properties file not found. Release signing may not be configured."
+}
+
+android {
+    namespace = "com.nitrkl.nitris"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        // Set your unique application ID
+        applicationId = "com.nitrkl.nitris"
+
+        // Flutter automatically provides these values
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    // Configure signing configs
+    signingConfigs {
+        release {
+            // Ensure these properties are defined in key.properties:
+            // storePassword=your_store_password
+            // keyPassword=your_key_password
+            // keyAlias=your_key_alias
+            // storeFile=path_to_your_keystore_file.jks
+            keyAlias = keystoreProperties["keyAlias"]
+            keyPassword = keystoreProperties["keyPassword"]
+            storePassword = keystoreProperties["storePassword"]
+            storeFile = keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null
+        }
+    }
+
+    buildTypes {
+        release {
+            // Use the signing config for release
+            signingConfig = signingConfigs.release
+
+            // Other optional release optimizations
+            // minifyEnabled true
+            // shrinkResources true
+            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        debug {
+            // Typically debug builds are not signed with release keys
+        }
+    }
+}
+
+// This points the Flutter plugin to the Flutter project directory
+flutter {
+    source = "../.."
+}

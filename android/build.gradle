@@ -1,0 +1,33 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        // Make sure this matches the Flutter recommended version in android/gradle.properties
+        // and is compatible with your Flutter version.
+        classpath "com.android.tools.build:gradle:8.0.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// Set the build directory for the root and subprojects
+rootProject.buildDir = "../build"
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    // Ensure evaluation order so that the app module is available
+    project.evaluationDependsOn(":app")
+}
+
+// Define a clean task to remove the build directory
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

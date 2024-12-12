@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:nitris/controllers/pin_creation_controller.dart';
+import 'package:nitris/core/provider/login_provider.dart';
+
+class PinUnlockScreenController {
+  final PinCreationController _pinCreationController = PinCreationController();
+  final LoginProvider _loginProvider = LoginProvider();
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  final Logger _logger = Logger('PinUnlockScreenController');
+
+  Future<bool> canCheckBiometrics() async {
+    try {
+      return await _localAuth.canCheckBiometrics;
+    } catch (e) {
+      _logger.severe("Error checking biometrics: $e");
+      return false;
+    }
+  }
+
+  Future<bool> authenticateWithBiometrics() async {
+    try {
+      return await _localAuth.authenticate(
+        localizedReason: 'Authenticate to Access NITRis',
+        options: const AuthenticationOptions(
+          useErrorDialogs: true,
+          stickyAuth: true,
+        ),
+      );
+    } catch (e) {
+      _logger.severe("Error during biometric authentication: $e");
+      return false;
+    }
+  }
+
+  Future<bool> validatePin(String pin) async {
+    try {
+      return await _pinCreationController.validatePin(pin);
+    } catch (e) {
+      _logger.severe("Error validating PIN: $e");
+      return false;
+    }
+  }
+
+  void logout(BuildContext context) {
+    try {
+      _loginProvider.logout(context);
+      _logger.info('User logged out successfully');
+    } catch (e) {
+      _logger.severe("Logout failed: $e");
+    }
+  }
+}
