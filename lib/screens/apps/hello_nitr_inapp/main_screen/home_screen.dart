@@ -248,7 +248,7 @@ class _HelloNITRHomeScreenState extends State<HelloNITRHomeScreen>
                       onTap: () => _handleContactTap(index),
                       onDismissed: () {},
                       onCall: () {
-                        LinkLauncher.makeCall(item.mobile ?? '');
+                        LinkLauncher.makeCall(context, item.mobile ?? '');
                       },
                       onViewProfile: () {
                         Navigator.push(

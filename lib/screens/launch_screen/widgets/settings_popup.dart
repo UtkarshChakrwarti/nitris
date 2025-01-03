@@ -86,7 +86,7 @@ class SettingsPopup extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 20),
+            Icon(icon, size: 20, color: Colors.white),
             const SizedBox(width: 12),
             Text(
               label,

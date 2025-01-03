@@ -54,7 +54,7 @@ class ContactTile extends StatelessWidget {
 
   void _launchCall(BuildContext context, String number) {
     try {
-      LinkLauncher.makeCall(number);
+      LinkLauncher.makeCall(context, number);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to make call: $e')),

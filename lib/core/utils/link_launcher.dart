@@ -19,19 +19,31 @@ class LinkLauncher {
     }
   }
 
-  static Future<void> makeCall(String phoneNumber) async {
-    final url = "tel:$phoneNumber";
-    try {
-      if (await canLaunch(url)) {
-        await launch(url);
-        _logger.info('Initiated call to: $phoneNumber');
-      } else {
-        throw 'Could not launch $url';
-      }
-    } catch (e) {
-      _logger.severe('Error making call to: $phoneNumber', e);
+static String sanitizePhoneNumber(String phoneNumber) {
+  return phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+}
+
+static Future<void> makeCall(BuildContext context, String phoneNumber) async {
+  final Uri uri = Uri(
+  scheme: 'tel',
+  path: sanitizePhoneNumber(phoneNumber),
+);
+  try {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication, // Ensure external apps are used for handling calls
+      );
+      _logger.info('Initiated call to: $phoneNumber');
+    } else {
+      throw 'Could not launch $uri';
     }
+  } catch (e) {
+    _logger.severe('Error making call to: $phoneNumber', e);
   }
+}
+
+
 
   static Future<void> sendWpMsg(String phoneNumber) async {
     final url = "https://wa.me/$phoneNumber";

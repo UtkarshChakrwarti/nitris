@@ -347,13 +347,14 @@ class DialogsAndPrompts {
                 style: TextStyle(
                   color: AppColors.primaryColor,
                   fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
               ),
             ],
           ),
           content: const Text(
             'Attendances marked will be erased if not saved before returning to homepage.',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 15),
           ),
           actions: [
             TextButton(
@@ -401,6 +402,7 @@ class DialogsAndPrompts {
                 style: TextStyle(
                   color: AppColors.primaryColor,
                   fontWeight: FontWeight.bold,
+                  fontSize: 18
                 ),
               ),
             ],

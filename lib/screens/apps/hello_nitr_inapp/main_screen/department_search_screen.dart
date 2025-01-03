@@ -226,7 +226,7 @@ class _DepartmentSearchScreenState extends State<DepartmentSearchScreen>
                     onTap: () => _handleContactTap(index),
                     onDismissed: () {},
                     onCall: () {
-                      LinkLauncher.makeCall(item.mobile ?? '');
+                      LinkLauncher.makeCall(context, item.mobile ?? '');
                     },
                     onViewProfile: () {
                       Navigator.push(

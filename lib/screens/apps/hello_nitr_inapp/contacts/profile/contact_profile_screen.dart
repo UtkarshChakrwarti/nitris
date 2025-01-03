@@ -8,7 +8,6 @@ import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/profile/widgets/pr
 
 import 'package:share_plus/share_plus.dart';
 
-
 class ContactProfileScreen extends StatelessWidget {
   final User contact;
   const ContactProfileScreen(this.contact, {super.key});
@@ -24,8 +23,29 @@ Email: ${_formatEmails(contact.email, contact.personalEmail)}
 NIT Rourkela
 ''';
     try {
-      Share.share(contactInfo, subject: "Contact Information");
+      // Log to confirm the method is triggered
+      print("trying to open share screen");
+      
+      // Get the RenderBox of the current context
+      final RenderBox? box = context.findRenderObject() as RenderBox?;
+      
+      if (box == null) {
+        throw Exception("RenderBox is null");
+      }
+
+      final sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+
+      // Log the sharePositionOrigin for debugging
+      print("sharePositionOrigin: $sharePositionOrigin");
+
+      Share.share(
+        contactInfo,
+        subject: "Contact Information",
+        sharePositionOrigin: sharePositionOrigin,
+      );
     } catch (e) {
+      // Log the error for debugging
+      print('Error sharing contact: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to share contact: $e')),
       );
@@ -76,10 +96,15 @@ NIT Rourkela
         ),
         iconTheme: const IconThemeData(color: AppColors.primaryColor),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            color: AppColors.primaryColor,
-            onPressed: () => _shareContact(context),
+          // Wrap the IconButton with Builder to get the correct context
+          Builder(
+            builder: (BuildContext context) {
+              return IconButton(
+                icon: const Icon(Icons.share),
+                color: AppColors.primaryColor,
+                onPressed: () => _shareContact(context),
+              );
+            },
           ),
         ],
       ),

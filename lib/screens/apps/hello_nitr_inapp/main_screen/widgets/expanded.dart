@@ -26,7 +26,7 @@ class ExpandedMenu extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildIconButton(CupertinoIcons.phone_solid, () {
-                LinkLauncher.makeCall(contact.mobile ?? '');
+                LinkLauncher.makeCall(context, contact.mobile ?? '');
               }),
               _buildIconButton(FontAwesomeIcons.whatsapp, () {
                 LinkLauncher.sendWpMsg(contact.mobile ?? '');

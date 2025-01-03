@@ -97,7 +97,7 @@ class ApplicationCard extends StatelessWidget {
                         application.label,
                         style: LaunchAppTheme.bodyTextStyle.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 12,
                           color: LaunchAppTheme.textSecondaryColor,
                         ),
                         textAlign: TextAlign.center,
@@ -112,7 +112,7 @@ class ApplicationCard extends StatelessWidget {
                             application.subtitle,
                             style: LaunchAppTheme.bodyTextStyle.copyWith(
                               fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                              fontSize: 12,
                               color: LaunchAppTheme.textSecondaryColor,
                             ),
                             textAlign: TextAlign.center,
