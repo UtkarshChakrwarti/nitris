@@ -14,23 +14,6 @@ class ClassSelectionSheet extends StatelessWidget {
     Key? key,
   }) : super(key: key);
 
-  /// Formats the date string from 'yyyy.MM.dd' to 'dd-MMM-yyyy'.
-  String _formatDate(String dateStr) {
-    try {
-      final parts = dateStr.split('.');
-      if (parts.length != 3) return dateStr;
-
-      final year = int.parse(parts[0]);
-      final month = int.parse(parts[1]);
-      final day = int.parse(parts[2]);
-
-      final date = DateTime(year, month, day);
-      return DateFormat('dd-MMM-yyyy').format(date);
-    } catch (_) {
-      return dateStr;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -38,7 +21,7 @@ class ClassSelectionSheet extends StatelessWidget {
     // Use the actual class number from the subject
     final classNumber = subject.totalClass + 1;
     final isButtonActive = classNumber >= 1 && classNumber <= 20;
-
+    int currentYear = 0000;
     // Parse the attendance date once
     DateTime? parsedDate;
     try {
@@ -49,6 +32,7 @@ class ClassSelectionSheet extends StatelessWidget {
           int.parse(parts[1]),
           int.parse(parts[2]),
         );
+        currentYear = int.parse(parts[0]);
       }
     } catch (_) {
       parsedDate = null;
@@ -108,7 +92,7 @@ class ClassSelectionSheet extends StatelessWidget {
             const SizedBox(height: 20),
             // Date Display
             Text(
-                displayDate,
+              displayDate,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -119,8 +103,7 @@ class ClassSelectionSheet extends StatelessWidget {
             const SizedBox(height: 12),
             // Class number display
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -167,7 +150,7 @@ class ClassSelectionSheet extends StatelessWidget {
                               subject: subject,
                               classNumber: classNumber,
                               semester: subject.session,
-                              academicYear: subject.academicYear,
+                              currentYear: currentYear.toString(),
                               sectionId: subject.sectionId,
                               date: parsedDate?.day ?? 0,
                               month: parsedDate?.month ?? 0,
@@ -179,10 +162,8 @@ class ClassSelectionSheet extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: AppColors.primaryColor,
-                  disabledForegroundColor:
-                      Colors.grey[300]?.withOpacity(0.38),
-                  disabledBackgroundColor:
-                      Colors.grey[300]?.withOpacity(0.12),
+                  disabledForegroundColor: Colors.grey[300]?.withOpacity(0.38),
+                  disabledBackgroundColor: Colors.grey[300]?.withOpacity(0.12),
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),

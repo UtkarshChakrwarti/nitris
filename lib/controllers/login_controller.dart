@@ -23,7 +23,7 @@ class LoginController {
       final loginProvider = Provider.of<LoginProvider>(context, listen: false);
 
       // Check if the user is a mock user
-      if (userId == "1000000" || userId == "1151213") {
+      if (userId == "1000000") {
         loginProvider.setMockUser(true);
         _logger.info('Mock user detected: isMockUser set to true');
       } else {

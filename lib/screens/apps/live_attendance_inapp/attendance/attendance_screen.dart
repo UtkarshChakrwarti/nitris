@@ -15,7 +15,7 @@ class AttendancePage extends StatefulWidget {
   final int month;
   final Subject subject;
   final String semester;
-  final String academicYear;
+  final String currentYear;
   final int classNumber;
   final int sectionId;
 
@@ -25,7 +25,7 @@ class AttendancePage extends StatefulWidget {
     required this.month,
     required this.subject,
     required this.semester,
-    required this.academicYear,
+    required this.currentYear,
     required this.classNumber,
     required this.sectionId,
   }) : super(key: key);
@@ -151,7 +151,7 @@ class _AttendancePageState extends State<AttendancePage> {
       final Map<String, dynamic> payload = {
         'classNumber': widget.classNumber,
         'date': widget.date,
-        'year': widget.academicYear.split('-')[0],
+        'year': widget.currentYear,
         'month': _getMonthAbbreviation(widget.month), // Convert to month name
         'sectionId': widget.sectionId,
         'attendance': attendanceRecords,
@@ -275,9 +275,9 @@ class _AttendancePageState extends State<AttendancePage> {
                     color: AppColors.primaryColor,
                     child: Center(
                       child: Text(
-                        '${widget.semester} ${widget.academicYear} | '
+                        '${widget.semester} ${widget.currentYear} | '
                         '${widget.date}-${_getMonthAbbreviation(widget.month)}-'
-                        '${widget.academicYear.split('-').first} | '
+                        '${widget.currentYear} | '
                         'Class ${widget.classNumber}',
                         style: const TextStyle(
                           color: Colors.white70,
