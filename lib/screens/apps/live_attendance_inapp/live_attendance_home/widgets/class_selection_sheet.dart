@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Added for date formatting
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/attendance_screen.dart';
@@ -21,26 +20,45 @@ class ClassSelectionSheet extends StatelessWidget {
     // Use the actual class number from the subject
     final classNumber = subject.totalClass + 1;
     final isButtonActive = classNumber >= 1 && classNumber <= 20;
-    int currentYear = 0000;
-    // Parse the attendance date once
-    DateTime? parsedDate;
-    try {
-      final parts = attendanceDate.split('.');
-      if (parts.length == 3) {
-        parsedDate = DateTime(
-          int.parse(parts[0]),
-          int.parse(parts[1]),
-          int.parse(parts[2]),
-        );
-        currentYear = int.parse(parts[0]);
-      }
-    } catch (_) {
-      parsedDate = null;
-    }
 
-    final displayDate = parsedDate != null
-        ? DateFormat('dd-MMM-yyyy').format(parsedDate)
-        : attendanceDate;
+    // Initialize variables for the display date, current year, and integer values for day and month.
+    String displayDate = attendanceDate; // Default display as provided by the server.
+    String currentYear = "0000";
+    int dayInt = 0;
+    int monthInt = 0;
+
+    // Split the attendanceDate (expected format "yyyy.MM.dd") into parts.
+    final parts = attendanceDate.split('.');
+    if (parts.length == 3) {
+      // Extract year, month, and day from the parts.
+      final year = parts[0];
+      final month = parts[1];
+      final day = parts[2];
+
+      // Map month numbers to their corresponding abbreviated month names.
+      final monthMap = {
+        '01': 'Jan',
+        '02': 'Feb',
+        '03': 'Mar',
+        '04': 'Apr',
+        '05': 'May',
+        '06': 'Jun',
+        '07': 'Jul',
+        '08': 'Aug',
+        '09': 'Sep',
+        '10': 'Oct',
+        '11': 'Nov',
+        '12': 'Dec',
+      };
+
+      // Reformat the date string into "dd-MMM-yyyy" (e.g., "14-Feb-2025").
+      displayDate = '$day-${monthMap[month] ?? month}-$year';
+      // Save the current year for use in the AttendancePage.
+      currentYear = year;
+      // Convert day and month to integers for navigation purposes.
+      dayInt = int.tryParse(day) ?? 0;
+      monthInt = int.tryParse(month) ?? 0;
+    }
 
     return Container(
       decoration: const BoxDecoration(
@@ -150,10 +168,10 @@ class ClassSelectionSheet extends StatelessWidget {
                               subject: subject,
                               classNumber: classNumber,
                               semester: subject.session,
-                              currentYear: currentYear.toString(),
+                              currentYear: currentYear,
                               sectionId: subject.sectionId,
-                              date: parsedDate?.day ?? 0,
-                              month: parsedDate?.month ?? 0,
+                              date: dayInt,
+                              month: monthInt,
                             ),
                           ),
                         );
