@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen>
                           SizedBox(height: constraints.maxHeight * 0.01),
                           CustomTextField(
                             controller: _passwordController,
-                            hintText: "Passcode",
+                            hintText: "Appcode",
                             icon: Icons.lock_clock_outlined,
                             obscureText: _obscureText,
                             focusNode: _passwordFocusNode,
