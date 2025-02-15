@@ -23,10 +23,10 @@ class CustomTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      obscureText: obscureText && hintText == "Password" ? obscureText : false,
+      obscureText: obscureText && hintText == "Passcode" ? obscureText : false,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: AppColors.primaryColor),
-        suffixIcon: hintText == "Password"
+        suffixIcon: hintText == "Passcode"
             ? IconButton(
                 icon: Icon(
                     obscureText
