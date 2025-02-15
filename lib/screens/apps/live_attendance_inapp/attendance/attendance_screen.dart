@@ -51,7 +51,7 @@ class _AttendancePageState extends State<AttendancePage> {
     _fetchStudents();
   }
 
-  /// Helper method to convert month number to three-letter abbreviation
+  /// Helper method to convert month number to full month name
   String _getMonthAbbreviation(int month) {
     const List<String> monthNames = [
       'January',
@@ -170,7 +170,7 @@ class _AttendancePageState extends State<AttendancePage> {
       );
 
       if (success == true) {
-        // go to the home screen via route and clear the stack
+        // Navigate to the home screen and clear the stack
         Navigator.of(context)
             .pushNamedAndRemoveUntil('/attendanceHome', (route) => false);
       }
@@ -217,16 +217,240 @@ class _AttendancePageState extends State<AttendancePage> {
     setState(() {
       students[index].status = status;
       _isAttendanceSaved = false;
-
       // Update _isSelectAll based on current attendance statuses
       _isSelectAll = students
           .every((student) => student.status == AttendanceStatus.present);
     });
   }
 
+  /// Show a custom dialog for present students with an icon-only option to mark them absent.
+  void _showPresentStudentsDialog(List<Student> presentStudents) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        // Use Dialog for a custom look; wrap with StatefulBuilder to update the list.
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              // Refresh the list from the parent state.
+              List<Student> localPresentStudents = students
+                  .where((student) => student.status == AttendanceStatus.present)
+                  .toList();
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.85,
+                child: Column(
+                  children: [
+                    // Header with title and close button.
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Present Students (${localPresentStudents.length})",
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 16),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          )
+                        ],
+                      ),
+                    ),
+                    // List of students styled similarly to student tiles.
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: localPresentStudents.length,
+                        itemBuilder: (context, index) {
+                          Student student = localPresentStudents[index];
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: ListTile(
+                              title: Text(
+                                student.name,
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.black),
+                              ),
+                              subtitle: Text(
+                                "Roll No: ${student.rollNo}",
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.grey),
+                              ),
+                              trailing: IconButton(
+                                onPressed: () {
+                                  // Mark this student as absent.
+                                  int studentIndex = students.indexWhere(
+                                      (s) => s.id == student.id);
+                                  if (studentIndex != -1) {
+                                    _updateStudentStatus(
+                                        studentIndex, AttendanceStatus.absent);
+                                    // Refresh the dialog.
+                                    setStateDialog(() {});
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: AppColors.darkRed,
+                                  size: 28,
+                                ),
+                                tooltip: 'Mark Absent',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show a custom dialog for absent students with an icon-only option to mark them present.
+  void _showAbsentStudentsDialog(List<Student> absentStudents) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              // Refresh list of absent students.
+              List<Student> localAbsentStudents = students
+                  .where((student) => student.status == AttendanceStatus.absent)
+                  .toList();
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.85,
+                child: Column(
+                  children: [
+                    // Header with title and close button.
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Absent Students (${localAbsentStudents.length})",
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 16),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          )
+                        ],
+                      ),
+                    ),
+                    // List of absent students.
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: localAbsentStudents.length,
+                        itemBuilder: (context, index) {
+                          Student student = localAbsentStudents[index];
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: ListTile(
+                              title: Text(
+                                student.name,
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.black),
+                              ),
+                              subtitle: Text(
+                                "Roll No: ${student.rollNo}",
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.grey),
+                              ),
+                              trailing: IconButton(
+                                onPressed: () {
+                                  // Mark this student as present.
+                                  int studentIndex = students.indexWhere(
+                                      (s) => s.id == student.id);
+                                  if (studentIndex != -1) {
+                                    _updateStudentStatus(
+                                        studentIndex, AttendanceStatus.present);
+                                    // Refresh the dialog.
+                                    setStateDialog(() {});
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.check_circle_outline,
+                                  color: AppColors.darkGreen,
+                                  size: 28,
+                                ),
+                                tooltip: 'Mark Present',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Count attendance statuses
+    // Count attendance statuses.
     final presentCount = students
         .where((student) => student.status == AttendanceStatus.present)
         .length;
@@ -237,6 +461,14 @@ class _AttendancePageState extends State<AttendancePage> {
         .where((student) => student.status == AttendanceStatus.notMarked)
         .length;
 
+    // Filter the students for the popup dialogs.
+    final presentStudents = students
+        .where((student) => student.status == AttendanceStatus.present)
+        .toList();
+    final absentStudents = students
+        .where((student) => student.status == AttendanceStatus.absent)
+        .toList();
+
     return WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
@@ -246,10 +478,7 @@ class _AttendancePageState extends State<AttendancePage> {
           centerTitle: true,
           title: Text(
             '${widget.subject.subjectCode} - ${widget.subject.subjectName}',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white,
-            ),
+            style: const TextStyle(fontSize: 16, color: Colors.white),
             overflow: TextOverflow.ellipsis,
           ),
           leading: IconButton(
@@ -263,12 +492,10 @@ class _AttendancePageState extends State<AttendancePage> {
           ),
         ),
         body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
+            ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
-                  // Display semester, academic year, class number, and formatted date
+                  // Display semester, academic year, class number, and formatted date.
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -286,7 +513,7 @@ class _AttendancePageState extends State<AttendancePage> {
                       ),
                     ),
                   ),
-                  // Attendance Header with counts and select all option
+                  // Attendance Header with counts, select all, and tap callbacks for details.
                   AttendanceHeader(
                     presentCount: presentCount,
                     absentCount: absentCount,
@@ -295,14 +522,18 @@ class _AttendancePageState extends State<AttendancePage> {
                     isSelectAll: _isSelectAll,
                     onSelectAllChanged: _handleSelectAll,
                     onClear: _clearAllSelections,
+                    // For present tile, show our custom dialog with option to mark absent.
+                    onPresentTap: () => _showPresentStudentsDialog(presentStudents),
+                    // For absent tile, show our custom dialog with option to mark present.
+                    onAbsentTap: () => _showAbsentStudentsDialog(absentStudents),
                   ),
-                  // List of students with animation
+                  // List of students with animation.
                   Expanded(
                     child: Stack(
                       children: [
                         Positioned.fill(
                           top: 0,
-                          bottom: 80, // Space for the submit button
+                          bottom: 80, // Space for the submit button.
                           child: AnimationLimiter(
                             child: ListView.builder(
                               padding: const EdgeInsets.only(bottom: 80),
@@ -316,16 +547,13 @@ class _AttendancePageState extends State<AttendancePage> {
                                     verticalOffset: 50.0,
                                     child: FadeInAnimation(
                                       child: StudentTile(
-                                        index: index +
-                                            1, // 1-based indexing for display
+                                        index: index + 1,
                                         student: student,
                                         isSmallDevice: true,
-                                        onMarkPresent: () =>
-                                            _updateStudentStatus(index,
-                                                AttendanceStatus.present),
-                                        onMarkAbsent: () =>
-                                            _updateStudentStatus(
-                                                index, AttendanceStatus.absent),
+                                        onMarkPresent: () => _updateStudentStatus(
+                                            index, AttendanceStatus.present),
+                                        onMarkAbsent: () => _updateStudentStatus(
+                                            index, AttendanceStatus.absent),
                                       ),
                                     ),
                                   ),
@@ -334,7 +562,7 @@ class _AttendancePageState extends State<AttendancePage> {
                             ),
                           ),
                         ),
-                        // Floating submit button
+                        // Floating submit button.
                         Positioned(
                           bottom: 16,
                           left: 16,
