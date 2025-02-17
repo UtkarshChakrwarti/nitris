@@ -5,17 +5,17 @@ class AppConstants {
   static const String securityKey ="opSlTMEmocl0W9hbRv9n"; // Key for encryption
 
   //Current App version
-  static const String currentAppVersion = '1.0.0';
+  static const String currentAppVersion = '1.0.1';
 
   // Play Store URL
-  static const String playStoreUrl = '';
+  static const String playStoreUrl = 'https://apps.apple.com/us/app/nitris/id6739775147';
 
   // API URLs and other constants
   static const String baseUrl =
-      'https://arogyakavach.nitrkl.ac.in/WebApi/HelloNITR';
+      'https://api.nitrkl.ac.in/HelloNITR';
 
   static const String baseUrlPresentsir =
-      'https://arogyakavach.nitrkl.ac.in/WebAPI/Presentsir';
+      'https://api.nitrkl.ac.in/Presentsir';
 
   static const String catUrl =
       'https://www.nitrkl.ac.in/CAT/';
