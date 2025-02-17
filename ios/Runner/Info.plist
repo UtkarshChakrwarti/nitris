@@ -53,5 +53,10 @@
 		<string>https</string>
 		<string>whatsapp</string>
 	</array>
+
+	<!-- Notifications Permissions -->
+	<key>NSUserNotificationUsageDescription</key>
+	<string>We need access to notifications to alert you about important updates.</string>
+	
 </dict>
 </plist>

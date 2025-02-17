@@ -95,7 +95,7 @@ class ApiService {
 
   // Check for app update
   Future<bool> checkUpdate() async {
-    final Uri url = Uri.parse('$baseUrl/version?appid=com.nitrkl.nitris');
+    final Uri url = Uri.parse('https://api.nitrkl.ac.in/version?appid=com.nitrkl.nitris');
     final response = await _sendRequest('GET', url);
 
     if (response.statusCode == 200) {
