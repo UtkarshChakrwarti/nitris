@@ -12,10 +12,10 @@ class AppConstants {
 
   // API URLs and other constants
   static const String baseUrl =
-      'https://arogyakavach.nitrkl.ac.in/WebApi/HelloNITR';
+      'https://api.nitrkl.ac.in/HelloNITR';
 
   static const String baseUrlPresentsir =
-      'https://arogyakavach.nitrkl.ac.in/WebAPI/Presentsir';
+      'https://api.nitrkl.ac.in/Presentsir';
 
   static const String catUrl =
       'https://www.nitrkl.ac.in/CAT/';
