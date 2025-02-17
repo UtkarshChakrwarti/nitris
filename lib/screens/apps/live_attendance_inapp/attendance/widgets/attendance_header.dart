@@ -10,9 +10,12 @@ class AttendanceHeader extends StatelessWidget {
   final bool isSelectAll;
   final ValueChanged<bool> onSelectAllChanged;
   final VoidCallback onClear;
+  // Optional callbacks for when the Present or Absent card is tapped.
+  final VoidCallback? onPresentTap;
+  final VoidCallback? onAbsentTap;
 
   const AttendanceHeader({
-    super.key,
+    Key? key,
     required this.presentCount,
     required this.absentCount,
     required this.unmarkedCount,
@@ -20,43 +23,55 @@ class AttendanceHeader extends StatelessWidget {
     required this.isSelectAll,
     required this.onSelectAllChanged,
     required this.onClear,
-  });
+    this.onPresentTap,
+    this.onAbsentTap,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       color: AppColors.primaryColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              AttendanceCard(
-                title: 'Present',
-                count: presentCount,
-                total: totalStudents,
-                color: AppColors.darkGreen,
-                icon: Icons.check_circle_outline,
+              // Use Expanded so all three cards have the same width.
+              Expanded(
+                child: GestureDetector(
+                  onTap: onPresentTap,
+                  child: AttendanceCard(
+                    title: 'Present',
+                    count: presentCount,
+                    total: totalStudents,
+                    color: AppColors.darkGreen,
+                    icon: Icons.check_circle_outline,
+                  ),
+                ),
               ),
               const SizedBox(width: 4),
-              AttendanceCard(
-                title: 'Absent',
-                count: absentCount,
-                total: totalStudents,
-                color: AppColors.darkRed,
-                icon: Icons.remove_circle_outline,
+              Expanded(
+                child: GestureDetector(
+                  onTap: onAbsentTap,
+                  child: AttendanceCard(
+                    title: 'Absent',
+                    count: absentCount,
+                    total: totalStudents,
+                    color: AppColors.darkRed,
+                    icon: Icons.remove_circle_outline,
+                  ),
+                ),
               ),
               const SizedBox(width: 4),
-              AttendanceCard(
-                title: 'Unmarked',
-                count: unmarkedCount,
-                total: totalStudents,
-                color: Colors.grey,
-                icon: Icons.help_outline,
+              Expanded(
+                child: AttendanceCard(
+                  title: 'Unmarked',
+                  count: unmarkedCount,
+                  total: totalStudents,
+                  color: Colors.grey,
+                  icon: Icons.help_outline,
+                ),
               ),
             ],
           ),
@@ -66,7 +81,7 @@ class AttendanceHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Present All Toggle
+                // "All Present" toggle switch container.
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
@@ -76,10 +91,8 @@ class AttendanceHeader extends StatelessWidget {
                       width: 1,
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -109,8 +122,7 @@ class AttendanceHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // Clear Button
+                // Reset/Clear button.
                 TextButton.icon(
                   onPressed: onClear,
                   style: TextButton.styleFrom(
@@ -118,10 +130,8 @@ class AttendanceHeader extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   icon: const Icon(
                     Icons.refresh_rounded,
