@@ -6,7 +6,7 @@ import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/profile/widgets/co
 import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/profile/widgets/email_tile.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/profile/widgets/profile_header.dart';
 
-import 'package:share_plus/share_plus.dart';
+// import 'package:share_plus/share_plus.dart';
 
 
 class ContactProfileScreen extends StatelessWidget {
@@ -24,7 +24,7 @@ Email: ${_formatEmails(contact.email, contact.personalEmail)}
 NIT Rourkela
 ''';
     try {
-      Share.share(contactInfo, subject: "Contact Information");
+      // Share.share(contactInfo, subject: "Contact Information");
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to share contact: $e')),
