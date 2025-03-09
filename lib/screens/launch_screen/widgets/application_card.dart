@@ -11,10 +11,10 @@ class ApplicationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use LayoutBuilder to get the available width for this card.
+    // Use LayoutBuilder to adapt to available space.
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate icon size as a percentage of the available width.
+        // Calculate icon size as a percentage of available width.
         final iconSize = constraints.maxWidth * 0.3;
 
         final Widget iconWidget = ClipOval(
@@ -36,7 +36,7 @@ class ApplicationCard extends StatelessWidget {
               if (application.label == 'Live Class') {
                 Navigator.of(context).pushNamed('/attendanceHome');
               } else if (application.label == 'Hello') {
-                // Check if contacts are already loaded; then navigate accordingly.
+                // Navigate based on whether contacts exist.
                 ContactsUpdateController().hasExistingContacts().then((hasContacts) {
                   if (hasContacts) {
                     Navigator.of(context).pushNamed('/helloNITRHome');
@@ -69,13 +69,12 @@ class ApplicationCard extends StatelessWidget {
                 ],
               ),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Icon container with gradient and padding.
+                    // Icon container with gradient background.
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
@@ -88,44 +87,39 @@ class ApplicationCard extends StatelessWidget {
                           end: Alignment.bottomRight,
                         ),
                       ),
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(7),
                       child: iconWidget,
                     ),
-                    const SizedBox(height: 12),
-                    // Application label and subtitle with constrained width.
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 200),
-                      child: Column(
-                        children: [
-                          Text(
-                            application.label,
+                    const SizedBox(height: 8),
+                    // Wrap the label in a FittedBox to scale down if necessary.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        application.label,
+                        style: LaunchAppTheme.bodyTextStyle.copyWith(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 9,
+                          color: LaunchAppTheme.textSecondaryColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    if (application.subtitle.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            application.subtitle,
                             style: LaunchAppTheme.bodyTextStyle.copyWith(
                               fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                              fontSize: 8,
                               color: LaunchAppTheme.textSecondaryColor,
                             ),
                             textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: true,
                           ),
-                          if (application.subtitle.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 0),
-                              child: Text(
-                                application.subtitle,
-                                style: LaunchAppTheme.bodyTextStyle.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: LaunchAppTheme.textSecondaryColor,
-                                ),
-                                textAlign: TextAlign.center,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: true,
-                              ),
-                            ),
-                        ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

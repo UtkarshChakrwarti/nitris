@@ -174,8 +174,8 @@ class StudentTile extends StatelessWidget {
     final tileColor = _getTileColor(student.status);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: tileColor,
         borderRadius: BorderRadius.circular(8),

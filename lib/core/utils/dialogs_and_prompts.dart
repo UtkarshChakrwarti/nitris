@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:logging/logging.dart';
 import 'package:nitris/controllers/login_controller.dart';
 import 'package:nitris/controllers/user_profile_controller.dart';
 import 'package:nitris/core/constants/app_colors.dart';
@@ -120,15 +119,19 @@ class DialogsAndPrompts {
             children: [
               Icon(Icons.delete_forever_rounded, color: AppColors.primaryColor),
               SizedBox(width: 10),
-              Text('Deregister',
-                  style: TextStyle(
-                      color: AppColors.primaryColor,
-                      fontWeight: FontWeight.bold)),
+              Flexible(
+                child: Text('Deregister and Log Out',
+                    style: TextStyle(
+                        color: AppColors.primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
+              ),
             ],
           ),
           content: const Text(
-              'Are you sure you want to Deregister your Device?',
-              style: TextStyle(fontSize: 16)),
+              'Are you sure you want to Deregister and Log Out from this Device?',
+              style: TextStyle(fontSize: 15),
+              ),
           actions: [
             TextButton(
               child: const Text('No',
@@ -145,13 +148,8 @@ class DialogsAndPrompts {
                       color: AppColors.primaryColor,
                       fontWeight: FontWeight.bold)),
               onPressed: () async {
-                try {
-                  await UserProfileController().deRegisterDevice(empCode);
-                  LoginController().logout(context);
-                } catch (e, stackTrace) {
-                  final logger = Logger('SettingsPopup');
-                  logger.severe('Error during de-register', e, stackTrace);
-                }
+                await UserProfileController().deRegisterDevice(empCode);
+                LoginController().logout(context);
               },
             ),
           ],
@@ -175,10 +173,11 @@ class DialogsAndPrompts {
               Icon(Icons.exit_to_app_rounded, color: AppColors.primaryColor),
               SizedBox(width: 10),
               Text(
-                'Exit',
+                'Log Out',
                 style: TextStyle(
                   color: AppColors.primaryColor,
                   fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
             ],
@@ -202,6 +201,7 @@ class DialogsAndPrompts {
                   style: TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -267,7 +267,7 @@ class DialogsAndPrompts {
                       await showDeRegisterDeviceDialog(context, empCode);
                     },
                     child: const Text(
-                      'Deregister device and Log out',
+                      'Deregister device & Log out',
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
@@ -341,12 +341,14 @@ class DialogsAndPrompts {
           title: const Row(
             children: [
               Icon(Icons.warning, color: AppColors.primaryColor),
-              SizedBox(width: 10),
-              Text(
-                'Unsaved Attendance',
-                style: TextStyle(
-                  color: AppColors.primaryColor,
-                  fontWeight: FontWeight.bold,
+              SizedBox(width: 15),
+              Flexible(
+                child: Text(
+                  'Unsaved Attendance',
+                  style: TextStyle(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14),
                 ),
               ),
             ],
@@ -396,11 +398,13 @@ class DialogsAndPrompts {
             children: [
               Icon(Icons.info, color: AppColors.primaryColor),
               SizedBox(width: 10),
-              Text(
-                'Confirm Submission',
-                style: TextStyle(
-                  color: AppColors.primaryColor,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  'Confirm Submission',
+                  style: TextStyle(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14),
                 ),
               ),
             ],

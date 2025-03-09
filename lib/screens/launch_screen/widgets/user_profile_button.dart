@@ -7,7 +7,6 @@ import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:nitris/core/utils/dialogs_and_prompts.dart';
 import 'package:nitris/core/utils/image_validator.dart';
 import 'package:nitris/screens/launch_screen/theme/launch_app_theme.dart';
-import 'package:nitris/screens/launch_screen/widgets/settings_popup.dart';
 import 'package:nitris/screens/launch_screen/widgets/user_profile_popup.dart';
 
 class UserProfileButton extends StatefulWidget {
@@ -44,18 +43,20 @@ class _UserProfileButtonState extends State<UserProfileButton> {
   void _onButtonClick(String value) {
     if (value == "My Profile") {
       _showUserProfilePopup();
-    } else if (value == "Settings") {
-      _showSettingsPopup();
+    } else if (value == "Deregister and Log Out") {
+      LocalStorageService.getCurrentUser().then((user) {
+        DialogsAndPrompts.showDeRegisterDeviceDialog(context, user!.empCode!);
+      });
     } else if (value == "Log Out") {
-      DialogsAndPrompts.showLogoutConfirmationDialog(context, _loggedInUser!.empCode!)
+      DialogsAndPrompts.showLogoutConfirmationDialog(
+              context, _loggedInUser!.empCode!)
           .then((shouldExit) async {
         if (shouldExit != null && shouldExit) {
           final userController = UserProfileController();
           await userController.logout(context);
         }
       });
-    }
-    else if (value == "Privacy Policy") {
+    } else if (value == "Privacy Policy") {
       Navigator.pushNamed(context, '/privacyPolicy');
     }
   }
@@ -80,14 +81,6 @@ class _UserProfileButtonState extends State<UserProfileButton> {
         cabinNumber: _loggedInUser?.roomNo ?? '',
         quarterNumber: _loggedInUser?.quarterNo ?? '',
       ),
-    );
-  }
-
-  void _showSettingsPopup() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => const SettingsPopup(),
     );
   }
 
@@ -152,10 +145,11 @@ class _UserProfileButtonState extends State<UserProfileButton> {
       ),
       itemBuilder: (context) => [
         _buildMenuItem(Icons.person_outline_rounded, 'My Profile'),
-        _buildMenuItem(Icons.settings_outlined, 'Settings'),
         _buildMenuItem(Icons.privacy_tip, 'Privacy Policy'),
         const PopupMenuDivider(),
         _buildMenuItem(Icons.logout_rounded, 'Log Out', isDestructive: true),
+        _buildMenuItem(Icons.delete_forever_rounded, 'Deregister and Log Out',
+            isDestructive: true),
       ],
     );
   }

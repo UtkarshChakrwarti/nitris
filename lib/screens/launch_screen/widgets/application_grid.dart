@@ -8,14 +8,14 @@ class ApplicationGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.all(8),
       child: GridView.builder(
         itemCount: applications.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.8, // Added this parameter to make tiles taller
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 0.9, // Adjusted to better fit the compact card.
         ),
         itemBuilder: (context, index) =>
             ApplicationCard(application: applications[index]),

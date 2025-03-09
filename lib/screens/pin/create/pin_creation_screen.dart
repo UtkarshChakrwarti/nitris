@@ -176,15 +176,19 @@ class _PinCreationScreenState extends State<PinCreationScreen> {
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                        children: [
                         Icon(Icons.check_circle,
-                            color: Color.fromARGB(255, 32, 111, 38)),
+                          color: Color.fromARGB(255, 32, 111, 38)),
                         SizedBox(width: 8),
-                        Text(
+                        Flexible(
+                          child: Text(
                           'Your PINs match successfully!',
                           style: TextStyle(
                             color: AppColors.primaryColor,
                             fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: true,
                           ),
                         ),
                       ],
@@ -210,7 +214,7 @@ class _PinCreationScreenState extends State<PinCreationScreen> {
                     onPressed: isButtonEnabled ? _onSubmit : null, // Disable button if conditions aren't met
                     child: const Text(
                       'CONTINUE',
-                      style: TextStyle(fontSize: 15, color: Colors.white),
+                      style: TextStyle(fontSize: 13, color: Colors.white),
                     ),
                   ),
                 ),

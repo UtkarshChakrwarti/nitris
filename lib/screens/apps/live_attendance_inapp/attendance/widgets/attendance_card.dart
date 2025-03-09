@@ -42,12 +42,16 @@ class AttendanceCard extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 16),
               const SizedBox(width: 4),
-              Text(
+              Flexible(
+              child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
+                fontSize: 12,
+                color: Colors.grey[600],
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
               ),
             ],
           ),

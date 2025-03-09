@@ -9,6 +9,7 @@ import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/att
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/floating_submit_button.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/student_tile.dart';
+import 'package:flutter/services.dart';
 
 class AttendancePage extends StatefulWidget {
   final int date;
@@ -48,6 +49,10 @@ class _AttendancePageState extends State<AttendancePage> {
   @override
   void initState() {
     super.initState();
+    // Lock the orientation to portrait mode
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     _fetchStudents();
   }
 
@@ -237,7 +242,8 @@ class _AttendancePageState extends State<AttendancePage> {
             builder: (context, setStateDialog) {
               // Refresh the list from the parent state.
               List<Student> localPresentStudents = students
-                  .where((student) => student.status == AttendanceStatus.present)
+                  .where(
+                      (student) => student.status == AttendanceStatus.present)
                   .toList();
               return Container(
                 height: MediaQuery.of(context).size.height * 0.85,
@@ -245,8 +251,8 @@ class _AttendancePageState extends State<AttendancePage> {
                   children: [
                     // Header with title and close button.
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: AppColors.primaryColor,
                         borderRadius: const BorderRadius.only(
@@ -260,7 +266,7 @@ class _AttendancePageState extends State<AttendancePage> {
                           Text(
                             "Present Students (${localPresentStudents.length})",
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 16),
+                                color: Colors.white, fontSize: 12),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, color: Colors.white),
@@ -305,8 +311,8 @@ class _AttendancePageState extends State<AttendancePage> {
                               trailing: IconButton(
                                 onPressed: () {
                                   // Mark this student as absent.
-                                  int studentIndex = students.indexWhere(
-                                      (s) => s.id == student.id);
+                                  int studentIndex = students
+                                      .indexWhere((s) => s.id == student.id);
                                   if (studentIndex != -1) {
                                     _updateStudentStatus(
                                         studentIndex, AttendanceStatus.absent);
@@ -357,8 +363,8 @@ class _AttendancePageState extends State<AttendancePage> {
                   children: [
                     // Header with title and close button.
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: AppColors.primaryColor,
                         borderRadius: const BorderRadius.only(
@@ -372,7 +378,7 @@ class _AttendancePageState extends State<AttendancePage> {
                           Text(
                             "Absent Students (${localAbsentStudents.length})",
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 16),
+                                color: Colors.white, fontSize: 12),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, color: Colors.white),
@@ -417,8 +423,8 @@ class _AttendancePageState extends State<AttendancePage> {
                               trailing: IconButton(
                                 onPressed: () {
                                   // Mark this student as present.
-                                  int studentIndex = students.indexWhere(
-                                      (s) => s.id == student.id);
+                                  int studentIndex = students
+                                      .indexWhere((s) => s.id == student.id);
                                   if (studentIndex != -1) {
                                     _updateStudentStatus(
                                         studentIndex, AttendanceStatus.present);
@@ -523,9 +529,11 @@ class _AttendancePageState extends State<AttendancePage> {
                     onSelectAllChanged: _handleSelectAll,
                     onClear: _clearAllSelections,
                     // For present tile, show our custom dialog with option to mark absent.
-                    onPresentTap: () => _showPresentStudentsDialog(presentStudents),
+                    onPresentTap: () =>
+                        _showPresentStudentsDialog(presentStudents),
                     // For absent tile, show our custom dialog with option to mark present.
-                    onAbsentTap: () => _showAbsentStudentsDialog(absentStudents),
+                    onAbsentTap: () =>
+                        _showAbsentStudentsDialog(absentStudents),
                   ),
                   // List of students with animation.
                   Expanded(
@@ -550,10 +558,12 @@ class _AttendancePageState extends State<AttendancePage> {
                                         index: index + 1,
                                         student: student,
                                         isSmallDevice: true,
-                                        onMarkPresent: () => _updateStudentStatus(
-                                            index, AttendanceStatus.present),
-                                        onMarkAbsent: () => _updateStudentStatus(
-                                            index, AttendanceStatus.absent),
+                                        onMarkPresent: () =>
+                                            _updateStudentStatus(index,
+                                                AttendanceStatus.present),
+                                        onMarkAbsent: () =>
+                                            _updateStudentStatus(
+                                                index, AttendanceStatus.absent),
                                       ),
                                     ),
                                   ),

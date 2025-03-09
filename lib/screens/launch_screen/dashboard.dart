@@ -4,18 +4,33 @@ import 'package:nitris/screens/launch_screen/widgets/app_header.dart';
 import 'package:nitris/screens/launch_screen/widgets/application_grid.dart';
 import 'package:nitris/screens/launch_screen/widgets/applications_bar.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
-  // Prevent going back to previous screen
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  // Prevent going back to previous screen.
   Future<bool> _onWillPop() async {
-    return false; // This prevents the back action
+    return false;
   }
+
+  @override
+  void initState() {
+    super.initState();
+    // Force portrait mode only.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: _onWillPop, // Triggered when the back button is pressed
+      onWillPop: _onWillPop, // Triggered when the back button is pressed.
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: const SystemUiOverlayStyle(
           statusBarColor: Colors.white,
