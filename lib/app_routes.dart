@@ -48,6 +48,8 @@ final Map<String, WidgetBuilder> appRoutes = {
   // Hello NITR Home Screen
   '/helloNITRHome': (context) => const HelloNITRHomeScreen(),
 
+  // students Attendance Screen
+  '/studentAttendance': (context) => const DummyModel(),
 
   //Custom error page
   '/error': (context) => CustomError(
@@ -58,3 +60,16 @@ final Map<String, WidgetBuilder> appRoutes = {
         ),
       ),
 };
+
+class DummyModel extends StatelessWidget {
+  const DummyModel({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Text('Student Attendance Screen'),
+      ),
+    );
+  }
+}

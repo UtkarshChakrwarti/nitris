@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nitris/core/models/application.dart';
+import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/update/contact_update_controller/contacts_update_controller.dart';
 import 'package:nitris/screens/launch_screen/theme/launch_app_theme.dart';
 
@@ -34,9 +35,19 @@ class ApplicationCard extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () {
+              onTap: () async {
+                // For the attendance module.
                 if (application.label == 'Live Class') {
-                  Navigator.of(context).pushNamed('/attendanceHome');
+                  // Retrieve the login response from secure storage.
+                  final loginResponse = await LocalStorageService.getLoginResponse();
+                  final employeeType = loginResponse?.employeeType?.toLowerCase() ?? 'employee';
+                  // Redirect based on employee type.
+                  if (employeeType == 'student') {
+                    // Trigger the student-specific route.
+                    Navigator.of(context).pushNamed('/studentAttendance');
+                  } else {
+                    Navigator.of(context).pushNamed('/attendanceHome');
+                  }
                 } else if (application.label == 'Hello') {
                   // Navigate based on whether contacts exist.
                   ContactsUpdateController().hasExistingContacts().then((hasContacts) {

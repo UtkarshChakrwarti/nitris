@@ -11,19 +11,31 @@ class ApplicationGrid extends StatelessWidget {
     final Orientation orientation = MediaQuery.of(context).orientation;
     final int crossAxisCount = orientation == Orientation.portrait ? 3 : 5;
 
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: GridView.builder(
-        itemCount: applications.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: 1, // Ensures square tiles.
-        ),
-        itemBuilder: (context, index) =>
-            ApplicationCard(application: applications[index]),
-      ),
+    return FutureBuilder<List<Application>>(
+      future: getApplications(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No applications available.'));
+        }
+        final apps = snapshot.data!;
+        return Padding(
+          padding: const EdgeInsets.all(8),
+          child: GridView.builder(
+            itemCount: apps.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1, // Ensures each tile is square.
+            ),
+            itemBuilder: (context, index) =>
+                ApplicationCard(application: apps[index]),
+          ),
+        );
+      },
     );
   }
 }
