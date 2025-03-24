@@ -5,7 +5,7 @@ class AppConstants {
   static const String securityKey ="opSlTMEmocl0W9hbRv9n"; // Key for encryption
 
   //Current App version
-  static const String currentAppVersion = '1.0.7';
+  static const String currentAppVersion = '2.0.0';
 
   // Play Store URL
   static const String playStoreUrl = 'https://play.google.com/store/apps/details?id=com.nitrkl.nitris';

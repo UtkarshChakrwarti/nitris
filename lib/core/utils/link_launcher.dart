@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:nitris/core/constants/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:logging/logging.dart';
 
@@ -75,15 +73,15 @@ class LinkLauncher {
     }
   }
 
-  static void _showErrorSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: AppColors.primaryColor,
-      ),
-    );
-  }
+  // static void _showErrorSnackBar(BuildContext context, String message) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(
+  //       content: Text(
+  //         message,
+  //         style: const TextStyle(color: Colors.white),
+  //       ),
+  //       backgroundColor: AppColors.primaryColor,
+  //     ),
+  //   );
+  // }
 }
