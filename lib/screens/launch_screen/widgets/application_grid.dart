@@ -7,15 +7,19 @@ class ApplicationGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine orientation to decide grid layout.
+    final Orientation orientation = MediaQuery.of(context).orientation;
+    final int crossAxisCount = orientation == Orientation.portrait ? 3 : 5;
+
     return Padding(
       padding: const EdgeInsets.all(8),
       child: GridView.builder(
         itemCount: applications.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
           crossAxisSpacing: 8,
           mainAxisSpacing: 8,
-          childAspectRatio: 0.9, // Adjusted to better fit the compact card.
+          childAspectRatio: 1, // Ensures square tiles.
         ),
         itemBuilder: (context, index) =>
             ApplicationCard(application: applications[index]),

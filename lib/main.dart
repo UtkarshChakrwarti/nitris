@@ -10,10 +10,6 @@ void main() async {
   _setupLogging(); // Setup logging
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock the entire app in portrait mode.
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
 
   // Request necessary permissions
   await requestPermissions();

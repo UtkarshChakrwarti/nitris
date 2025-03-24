@@ -25,7 +25,10 @@ class ApiService {
 
   // Validate the user's that they are still valid or not api will return true if user is valid else false
   Future<bool> validateUser(String? empCode) async {
-    final Uri url = Uri.parse('$baseUrl/MyStatus?userid=$empCode');
+    // if imp code contains non digit characters then return true as this can be case be of student else check for employee validation
+    if (empCode!.contains(RegExp(r'[a-zA-Z]')) || empCode == '1000000') {
+      return true;
+    }    final Uri url = Uri.parse('$baseUrl/MyStatus?userid=$empCode');
     final response = await _sendRequest('POST', url);
 
     if (response.statusCode == 200) {

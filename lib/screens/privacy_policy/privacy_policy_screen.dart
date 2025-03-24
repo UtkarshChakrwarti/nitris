@@ -81,7 +81,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               _buildSubBulletContent(
                   "Fulfill and manage purchases and other transactions."),
               _buildSubBulletContent(
-                  "Improve the functionality and user experience of Hello NITR."),
+                  "Improve the functionality and user experience of NITRis App."),
               _buildSubBulletContent(
                   "Prevent fraudulent transactions and protect against criminal activity."),
               _buildSubBulletContent("Process payments and refunds."),

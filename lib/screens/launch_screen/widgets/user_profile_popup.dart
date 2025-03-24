@@ -86,9 +86,8 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: AppColors.secondaryColor,
-                    backgroundImage: isImageValid
-                        ? MemoryImage(_decodedImage!)
-                        : null,
+                    backgroundImage:
+                        isImageValid ? MemoryImage(_decodedImage!) : null,
                     child: !isImageValid
                         ? Text(
                             widget.userName.isNotEmpty
@@ -145,20 +144,27 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
               color: Colors.white.withOpacity(0.3),
               thickness: 1,
             ),
-            _buildDetailTile("Mobile",
-                widget.mobile.startsWith("+91") ? widget.mobile : "+91 ${widget.mobile}",
-                labelWidth),
-            _buildDetailTile("Work Number", "+91 661246 ${widget.workNumber}",
-                labelWidth),
-            _buildDetailTile("Residence", "+91 661246 ${widget.residence}",
-                labelWidth),
-            _buildDetailTile("Work Email", widget.email, labelWidth),
-            Divider(
-              color: Colors.white.withOpacity(0.3),
-              thickness: 1,
-            ),
-            _buildDetailTile("Cabin Number", widget.cabinNumber, labelWidth),
-            _buildDetailTile("Quarter Number", widget.quarterNumber, labelWidth),
+            if (widget.mobile.isNotEmpty)
+              _buildDetailTile(
+                  "Mobile",
+                  widget.mobile.startsWith("+91")
+                      ? widget.mobile
+                      : "+91 ${widget.mobile}",
+                  labelWidth),
+            if (widget.workNumber.isNotEmpty)
+              _buildDetailTile(
+                  "Work Number", "+91 661246 ${widget.workNumber}", labelWidth),
+            if (widget.residence.isNotEmpty)
+              _buildDetailTile(
+                  "Residence", "+91 661246 ${widget.residence}", labelWidth),
+            if (widget.email.isNotEmpty)
+              _buildDetailTile("Work Email", widget.email, labelWidth),
+            Divider(color: Colors.white.withOpacity(0.3), thickness: 1),
+            if (widget.cabinNumber.isNotEmpty)
+              _buildDetailTile("Cabin Number", widget.cabinNumber, labelWidth),
+            if (widget.quarterNumber.isNotEmpty)
+              _buildDetailTile(
+                  "Quarter Number", widget.quarterNumber, labelWidth),
           ],
         ),
       ),
