@@ -129,9 +129,9 @@ class DialogsAndPrompts {
             ],
           ),
           content: const Text(
-              'Are you sure you want to Deregister and Log Out from this Device?',
-              style: TextStyle(fontSize: 15),
-              ),
+            'Are you sure you want to Deregister and Log Out from this Device?',
+            style: TextStyle(fontSize: 15),
+          ),
           actions: [
             TextButton(
               child: const Text('No',
@@ -197,7 +197,7 @@ class DialogsAndPrompts {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
-                  'WARNING: This will log you out from this device. You will be unable to login from another device unless you deregister from this device.',
+                  'WARNING: Logging out without deregister will block you from logging into a new device. Please deregister to login from a new device in future.',
                   style: TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
@@ -238,6 +238,29 @@ class DialogsAndPrompts {
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 45),
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await showDeRegisterDeviceDialog(context, empCode);
+                    },
+                    child: const Text(
+                      'Deregister & Log out',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 45),
                       side: const BorderSide(color: AppColors.primaryColor),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -250,26 +273,6 @@ class DialogsAndPrompts {
                       'Back',
                       style: TextStyle(
                         color: AppColors.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 45),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () async {
-                      Navigator.of(context).pop();
-                      await showDeRegisterDeviceDialog(context, empCode);
-                    },
-                    child: const Text(
-                      'Deregister device & Log out',
-                      style: TextStyle(
-                        color: Colors.red,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

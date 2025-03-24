@@ -161,7 +161,7 @@ class ApiService {
     }
   }
   Future<void> submitAttendance(dynamic payload) async {
-    final Uri url = Uri.parse('https://arogyakavach.nitrkl.ac.in/WebApi/Presentsir/SubmitAttendance');
+    final Uri url = Uri.parse('$baseUrlPresentsir/SubmitAttendance');
    
     var headers = {'Content-Type': 'application/json'};
     

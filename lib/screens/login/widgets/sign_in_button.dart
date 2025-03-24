@@ -74,7 +74,7 @@ class SignInButton extends StatelessWidget {
                             }
                           } else {
                             DialogsAndPrompts.showErrorDialog(
-                                'Invalid username or password', context);
+                                'Invalid username or appcode', context);
                           }
                         } else {
                           usernameFocusNode.unfocus();
