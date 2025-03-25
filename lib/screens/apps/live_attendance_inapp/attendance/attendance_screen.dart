@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/student.dart';
@@ -56,10 +57,22 @@ class _AttendancePageState extends State<AttendancePage> {
   QRViewController? _qrController;
   String? _lastScannedCode;
 
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
   // Month names constant
   static const List<String> _monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
   ];
 
   @override
@@ -67,12 +80,20 @@ class _AttendancePageState extends State<AttendancePage> {
     super.initState();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _fetchStudents();
+    _audioPlayer.setSource(AssetSource('audio/success.mp3'));
+    _audioPlayer.setSource(AssetSource('audio/error.mp3'));
   }
 
   @override
   void dispose() {
     _qrController?.dispose();
+    _audioPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _playSound(String fileName) async {
+    await _audioPlayer.stop();
+    await _audioPlayer.play(AssetSource('audio/$fileName'));
   }
 
   @override
@@ -103,7 +124,11 @@ class _AttendancePageState extends State<AttendancePage> {
     } catch (e, st) {
       _logger.severe('Error fetching students: $e', e, st);
       setState(() => _isLoading = false);
-      DialogsAndPrompts.showFailureDialog(context, 'Failed to load students: $e');
+      // On error, vibrate and play error sound.
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      DialogsAndPrompts.showFailureDialog(
+          context, 'Failed to load students: $e');
     }
   }
 
@@ -124,14 +149,27 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
+  /// When navigating back, terminate the active session.
+  /// If there is unsaved attendance, prompt the user first.
   Future<bool> _handleBackNavigation() async {
+    bool shouldPop = true;
     if (!_isAttendanceSaved &&
         students.any((s) => s.status != AttendanceStatus.notMarked)) {
-      final shouldPop =
+      shouldPop =
           await DialogsAndPrompts.showUnsavedAttendanceDialog(context) ?? false;
-      return shouldPop;
     }
-    return true;
+    if (shouldPop) {
+      try {
+        _logger.info(
+            "Terminating active session on back navigation for section ${widget.sectionId}");
+        await _apiService.endLiveSession(widget.sectionId.toString());
+        _logger.info("Active session terminated successfully.");
+      } catch (e) {
+        _logger
+            .severe("Error terminating active session on back navigation: $e");
+      }
+    }
+    return shouldPop;
   }
 
   Future<void> _clearAllSelections() async {
@@ -160,9 +198,8 @@ class _AttendancePageState extends State<AttendancePage> {
           .map((student) => {
                 'attendanceId': student.attendanceId,
                 'id': student.id,
-                'status': (student.status == AttendanceStatus.present)
-                    ? 'G'
-                    : 'R',
+                'status':
+                    (student.status == AttendanceStatus.present) ? 'G' : 'R',
               })
           .toList();
 
@@ -178,6 +215,10 @@ class _AttendancePageState extends State<AttendancePage> {
       _logger.info('Saving attendance payload: $payload');
       await _apiService.submitAttendance(payload);
 
+      // On successful save, trigger light haptic and play success sound.
+      HapticFeedback.lightImpact();
+      await _playSound('success.mp3');
+
       final success = await DialogsAndPrompts.showSuccessDialog(
         context,
         'Attendance saved successfully.',
@@ -191,13 +232,19 @@ class _AttendancePageState extends State<AttendancePage> {
       setState(() => _isAttendanceSaved = true);
     } catch (e, st) {
       _logger.severe('Error submitting attendance: $e', e, st);
-      DialogsAndPrompts.showFailureDialog(context, 'Failed to save attendance: $e');
+      // On error, vibrate and play error sound.
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      DialogsAndPrompts.showFailureDialog(
+          context, 'Failed to save attendance: $e');
     }
   }
 
   Future<void> _handleSubmitButtonPressed() async {
     if (_isManualMode &&
-        students.where((s) => s.status == AttendanceStatus.notMarked).isNotEmpty) {
+        students
+            .where((s) => s.status == AttendanceStatus.notMarked)
+            .isNotEmpty) {
       DialogsAndPrompts.showFailureDialog(
         context,
         'Please mark all students (none can be "unmarked") before submitting.',
@@ -215,7 +262,8 @@ class _AttendancePageState extends State<AttendancePage> {
     if (confirm) {
       setState(() {
         for (var student in students) {
-          student.status = value ? AttendanceStatus.present : AttendanceStatus.notMarked;
+          student.status =
+              value ? AttendanceStatus.present : AttendanceStatus.notMarked;
         }
         _isAttendanceSaved = false;
       });
@@ -244,10 +292,13 @@ class _AttendancePageState extends State<AttendancePage> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(title, style: TextStyle(color: AppColors.primaryColor)),
-          content: Center(child: Text('No student marked ${title.toLowerCase().split(" ")[0]}.')),
+          content: Center(
+              child: Text(
+                  'No student marked ${title.toLowerCase().split(" ")[0]}.')),
           actions: [
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
+              style:
+                  TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('OK'),
             ),
@@ -261,7 +312,8 @@ class _AttendancePageState extends State<AttendancePage> {
       context: context,
       builder: (ctx) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: StatefulBuilder(
             builder: (ctx, setStateDialog) {
               final localStudents = students.where(filter).toList();
@@ -270,7 +322,8 @@ class _AttendancePageState extends State<AttendancePage> {
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: AppColors.primaryColor,
                         borderRadius: const BorderRadius.only(
@@ -283,7 +336,8 @@ class _AttendancePageState extends State<AttendancePage> {
                         children: [
                           Text(
                             "$title (${localStudents.length})",
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, color: Colors.white),
@@ -298,27 +352,34 @@ class _AttendancePageState extends State<AttendancePage> {
                         itemCount: localStudents.length,
                         itemBuilder: (context, i) {
                           final student = localStudents[i];
-                          final idx = students.indexWhere((s) => s.id == student.id);
+                          final idx =
+                              students.indexWhere((s) => s.id == student.id);
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: const [
-                                BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+                                BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2))
                               ],
                             ),
                             child: ListTile(
                               title: Text(
                                 student.name,
-                                style: const TextStyle(fontSize: 16, color: Colors.black),
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.black),
                               ),
                               subtitle: Text(
                                 "Roll No: ${student.rollNo}",
-                                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.grey),
                               ),
                               trailing: IconButton(
-                                icon: Icon(actionIcon, color: iconColor, size: 28),
+                                icon: Icon(actionIcon,
+                                    color: iconColor, size: 28),
                                 tooltip: actionTooltip,
                                 onPressed: () {
                                   if (idx != -1) {
@@ -370,8 +431,10 @@ class _AttendancePageState extends State<AttendancePage> {
     final dLat = (lat2 - lat1) * (pi / 180);
     final dLon = (lon2 - lon1) * (pi / 180);
     final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * (pi / 180)) * cos(lat2 * (pi / 180)) *
-        sin(dLon / 2) * sin(dLon / 2);
+        cos(lat1 * (pi / 180)) *
+            cos(lat2 * (pi / 180)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return R * c;
   }
@@ -393,7 +456,8 @@ class _AttendancePageState extends State<AttendancePage> {
     if (permission == LocationPermission.deniedForever) {
       throw Exception('Location permissions are permanently denied.');
     }
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
   }
 
   /// Updated QR code scanned handler.
@@ -412,6 +476,8 @@ class _AttendancePageState extends State<AttendancePage> {
     }
     final parts = data.split(',');
     if (parts.length != 5) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
@@ -431,6 +497,8 @@ class _AttendancePageState extends State<AttendancePage> {
     // parts[4] is sectionId (ignored)
 
     if (studentLong == null || studentLat == null) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
@@ -445,8 +513,11 @@ class _AttendancePageState extends State<AttendancePage> {
 
     // Convert the QR timestamp and sessionTime to DateTime objects.
     final qrTimestamp = DateTime.tryParse(qrTimestampStr.replaceAll(' ', 'T'));
-    final sessionTimestamp = DateTime.tryParse(widget.sessionTime.replaceAll(' ', 'T'));
+    final sessionTimestamp =
+        DateTime.tryParse(widget.sessionTime.replaceAll(' ', 'T'));
     if (qrTimestamp == null || sessionTimestamp == null) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
@@ -461,6 +532,8 @@ class _AttendancePageState extends State<AttendancePage> {
 
     // Check that the QR code timestamp is after (or equal to) the session start time.
     if (qrTimestamp.isBefore(sessionTimestamp)) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
@@ -477,8 +550,11 @@ class _AttendancePageState extends State<AttendancePage> {
     late Position teacherPosition;
     try {
       teacherPosition = await _getTeacherLocation();
-      _logger.info("Teacher location: lat: ${teacherPosition.latitude}, long: ${teacherPosition.longitude}");
+      _logger.info(
+          "Teacher location: lat: ${teacherPosition.latitude}, long: ${teacherPosition.longitude}");
     } catch (e) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
@@ -492,9 +568,14 @@ class _AttendancePageState extends State<AttendancePage> {
     }
     final teacherLat = teacherPosition.latitude;
     final teacherLong = teacherPosition.longitude;
-    final distance = calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
+    final distance =
+        calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
 
-    if (distance > 2000) {
+// distance Adjustment in mtrs
+
+    if (distance > 100) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
@@ -508,8 +589,11 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     // Look up the student using a case‑insensitive roll number match.
-    final idx = students.indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
+    final idx = students
+        .indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
     if (idx == -1) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
@@ -526,6 +610,9 @@ class _AttendancePageState extends State<AttendancePage> {
       students[idx].status = AttendanceStatus.present;
       _isAttendanceSaved = false;
     });
+    // On successfully marking present, trigger heavy impact and play success sound.
+    HapticFeedback.heavyImpact();
+    await _playSound('success.mp3');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.green[600],
@@ -550,10 +637,14 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   Widget _buildAttendanceHeader() {
-    final presentCount = students.where((s) => s.status == AttendanceStatus.present).length;
-    final absentCount = students.where((s) => s.status == AttendanceStatus.absent).length;
-    final unmarkedCount = students.where((s) => s.status == AttendanceStatus.notMarked).length;
-    final allPresent = students.isNotEmpty && students.every((s) => s.status == AttendanceStatus.present);
+    final presentCount =
+        students.where((s) => s.status == AttendanceStatus.present).length;
+    final absentCount =
+        students.where((s) => s.status == AttendanceStatus.absent).length;
+    final unmarkedCount =
+        students.where((s) => s.status == AttendanceStatus.notMarked).length;
+    final allPresent = students.isNotEmpty &&
+        students.every((s) => s.status == AttendanceStatus.present);
     return AttendanceHeader(
       presentCount: presentCount,
       absentCount: absentCount,
@@ -621,8 +712,10 @@ class _AttendancePageState extends State<AttendancePage> {
           index: index + 1,
           student: student,
           isSmallDevice: true,
-          onMarkPresent: () => _updateStudentStatus(index, AttendanceStatus.present),
-          onMarkAbsent: () => _updateStudentStatus(index, AttendanceStatus.absent),
+          onMarkPresent: () =>
+              _updateStudentStatus(index, AttendanceStatus.present),
+          onMarkAbsent: () =>
+              _updateStudentStatus(index, AttendanceStatus.absent),
         );
       },
     );
@@ -727,17 +820,20 @@ class _AttendancePageState extends State<AttendancePage> {
                   Container(
                     width: double.infinity,
                     color: AppColors.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: Center(
                       child: Text(
                         '${widget.semester} ${widget.currentYear} | ${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} | Class ${widget.classNumber}',
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 14),
                       ),
                     ),
                   ),
                   _buildAttendanceHeader(),
                   Expanded(
-                    child: _isManualMode ? _buildManualListView() : _buildQRView(),
+                    child:
+                        _isManualMode ? _buildManualListView() : _buildQRView(),
                   ),
                 ],
               ),
