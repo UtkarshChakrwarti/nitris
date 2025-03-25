@@ -184,6 +184,47 @@ class ApiService {
     }
   }
 
+  // Start the live attendance session
+  Future<Map<String, dynamic>> startLiveSession(String sectionId) async {
+    final Uri url = Uri.parse('$baseUrlPresentsir/Session/Active/$sectionId');
+    final response = await _sendRequest('POST', url);
+
+    if (response.statusCode == 200) {
+      final result = await response.stream.bytesToString();
+      return jsonDecode(result);
+    } else {
+      _logger.severe('Failed to start live session: ${response.reasonPhrase}');
+      throw Exception('Failed to start live session');
+    }
+  }
+
+  // End the live attendance session
+  Future<void> endLiveSession(String sectionId) async {
+    final Uri url = Uri.parse('$baseUrlPresentsir/Session/Close/$sectionId');
+    final response = await _sendRequest('POST', url);
+
+    if (response.statusCode == 200) {
+      _logger.info(await response.stream.bytesToString());
+    } else {
+      _logger.severe('Failed to end live session: ${response.reasonPhrase}');
+      throw Exception('Failed to end live session');
+    }
+  }
+
+  //fetch the attendance session active status 
+  Future<bool> checkSessionStatus(String sectionId) async {
+    final Uri url = Uri.parse('$baseUrlPresentsir/Session/checkstatus/$sectionId');
+    final response = await _sendRequest('GET', url);
+
+    if (response.statusCode == 200) {
+      final result = await response.stream.bytesToString();
+      return jsonDecode(result);
+    } else {
+      _logger.severe('Failed to check session status: ${response.reasonPhrase}');
+      throw Exception('Failed to check session status');
+    }
+  }
+
   Future<http.StreamedResponse> _sendRequest(String method, Uri url,
       {Map<String, String>? headers, dynamic body}) async {
     var request = http.Request(method, url);
