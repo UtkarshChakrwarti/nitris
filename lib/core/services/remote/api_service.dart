@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:nitris/core/models/login.dart';
 import 'package:http/http.dart' as http;
 import 'package:nitris/core/models/student.dart';
+import 'package:nitris/core/models/students_subject_response.dart';
 import 'package:nitris/core/models/subject_response.dart';
 import 'package:nitris/core/models/user.dart';
 import 'package:nitris/core/constants/app_constants.dart';
@@ -28,7 +29,8 @@ class ApiService {
     // if imp code contains non digit characters then return true as this can be case be of student else check for employee validation
     if (empCode!.contains(RegExp(r'[a-zA-Z]')) || empCode == '1000000') {
       return true;
-    }    final Uri url = Uri.parse('$baseUrl/MyStatus?userid=$empCode');
+    }
+    final Uri url = Uri.parse('$baseUrl/MyStatus?userid=$empCode');
     final response = await _sendRequest('POST', url);
 
     if (response.statusCode == 200) {
@@ -163,24 +165,41 @@ class ApiService {
       throw Exception('Failed to get students');
     }
   }
+
   Future<void> submitAttendance(dynamic payload) async {
     final Uri url = Uri.parse('$baseUrlPresentsir/SubmitAttendance');
-   
+
     var headers = {'Content-Type': 'application/json'};
-    
+
     // Print the request details
     _logger.info('Submit Attendance Request:');
     _logger.info('URL: $url');
     _logger.info('Headers: $headers');
     _logger.info('Payload: ${jsonEncode(payload)}');
 
-    final response = await _sendRequest('POST', url, headers: headers, body: payload);
+    final response =
+        await _sendRequest('POST', url, headers: headers, body: payload);
 
     if (response.statusCode == 200) {
       _logger.info(await response.stream.bytesToString());
     } else {
       _logger.severe('Failed to save attendance: ${response.reasonPhrase}');
       throw Exception('Failed to save attendance');
+    }
+  }
+
+  Future<StudentSubjectResponse> getStudentSubjects(String userId) async {
+    final Uri url =
+        Uri.parse('$baseUrlPresentsir/Student/GetSubjects?userId=$userId');
+    final response = await _sendRequest('GET', url);
+
+    if (response.statusCode == 200) {
+      return StudentSubjectResponse.fromJson(
+          jsonDecode(await response.stream.bytesToString()));
+    } else {
+      _logger
+          .severe('Failed to get student subjects: ${response.reasonPhrase}');
+      throw Exception('Failed to get student subjects');
     }
   }
 
@@ -211,14 +230,14 @@ class ApiService {
     }
   }
 
-  //fetch the attendance session active status 
   Future<bool> checkSessionStatus(String sectionId) async {
     final Uri url = Uri.parse('$baseUrlPresentsir/Session/checkstatus/$sectionId');
     final response = await _sendRequest('GET', url);
 
     if (response.statusCode == 200) {
       final result = await response.stream.bytesToString();
-      return jsonDecode(result);
+      final Map<String, dynamic> jsonData = jsonDecode(result);
+      return jsonData['status'] == 'ACTIVE';
     } else {
       _logger.severe('Failed to check session status: ${response.reasonPhrase}');
       throw Exception('Failed to check session status');

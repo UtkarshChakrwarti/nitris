@@ -38,6 +38,9 @@ dependencies:
   qr_code_scanner_plus: ^2.0.10+1
   geolocator: ^13.0.3
   audioplayers: ^6.4.0
+  qr_flutter: ^4.1.0
+  encrypt: ^5.0.3
+  heroicons: ^0.11.0
 
 dev_dependencies:
   flutter_test:
