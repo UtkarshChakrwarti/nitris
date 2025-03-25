@@ -1,15 +1,19 @@
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
+import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:audioplayers/audioplayers.dart';
+
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/student.dart';
 import 'package:nitris/core/models/subject.dart';
 import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/core/utils/dialogs_and_prompts.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/attendance_header.dart';
-import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/floating_submit_button.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/student_tile.dart';
-import 'package:flutter/services.dart';
 
 class AttendancePage extends StatefulWidget {
   final int date;
@@ -19,6 +23,7 @@ class AttendancePage extends StatefulWidget {
   final String currentYear;
   final int classNumber;
   final int sectionId;
+  final String sessionTime; // session start time in IST format
 
   const AttendancePage({
     Key? key,
@@ -29,6 +34,7 @@ class AttendancePage extends StatefulWidget {
     required this.currentYear,
     required this.classNumber,
     required this.sectionId,
+    required this.sessionTime,
   }) : super(key: key);
 
   @override
@@ -36,95 +42,136 @@ class AttendancePage extends StatefulWidget {
 }
 
 class _AttendancePageState extends State<AttendancePage> {
-  // Services and Logging
+  // Services and logging
   final ApiService _apiService = ApiService();
   final Logger _logger = Logger('AttendancePage');
 
-  // State Variables
+  // State variables
   List<Student> students = [];
-  bool _isSelectAll = false;
-  bool _isAttendanceSaved = false;
   bool _isLoading = true;
+  bool _isAttendanceSaved = false;
+  bool _isManualMode = false;
+
+  // QR scanner variables
+  final GlobalKey _qrViewKey = GlobalKey(debugLabel: 'QR');
+  QRViewController? _qrController;
+  String? _lastScannedCode;
+
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  // Month names constant
+  static const List<String> _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ];
 
   @override
   void initState() {
     super.initState();
-    // Lock the orientation to portrait mode
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _fetchStudents();
+    _audioPlayer.setSource(AssetSource('audio/success.mp3'));
+    _audioPlayer.setSource(AssetSource('audio/error.mp3'));
   }
 
-  /// Helper method to convert month number to full month name
-  String _getMonthAbbreviation(int month) {
-    const List<String> monthNames = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
+  @override
+  void dispose() {
+    _qrController?.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
 
-    if (month < 1 || month > 12) {
-      return 'Invalid';
+  Future<void> _playSound(String fileName) async {
+    await _audioPlayer.stop();
+    await _audioPlayer.play(AssetSource('audio/$fileName'));
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    try {
+      if (Platform.isAndroid) _qrController?.pauseCamera();
+      _qrController?.resumeCamera();
+    } catch (e) {
+      _logger.warning('Camera reassemble error: $e');
     }
-    return monthNames[month - 1];
   }
 
-  /// Fetch students from the API
-  Future<void> _fetchStudents() async {
-    setState(() {
-      _isLoading = true;
-    });
+  String _getMonthName(int month) =>
+      (month >= 1 && month <= 12) ? _monthNames[month - 1] : 'Invalid';
 
+  Future<void> _fetchStudents() async {
+    setState(() => _isLoading = true);
     try {
       final fetchedStudents = await _apiService.getStudents(widget.sectionId);
       setState(() {
         students = fetchedStudents;
         _isLoading = false;
       });
-    } catch (e, stackTrace) {
-      _logger.severe('Error fetching students: $e', e, stackTrace);
-      setState(() {
-        _isLoading = false;
-      });
+      if (!_isManualMode) {
+        _markAllAbsent();
+      }
+    } catch (e, st) {
+      _logger.severe('Error fetching students: $e', e, st);
+      setState(() => _isLoading = false);
+      // On error, vibrate and play error sound.
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
       DialogsAndPrompts.showFailureDialog(
-        context,
-        'Failed to load students: $e',
-      );
+          context, 'Failed to load students: $e');
     }
   }
 
-  /// Check if all students have been marked (present or absent)
-  bool get _isAllMarked =>
-      students.isNotEmpty &&
-      students.every((student) => student.status != AttendanceStatus.notMarked);
+  void _markAllAbsent() {
+    for (var student in students) {
+      student.status = AttendanceStatus.absent;
+    }
+  }
 
-  /// Handle back navigation with unsaved attendance check
+  /// Swaps student statuses between `absent` and `notMarked`
+  void _swapAbsentNotMarked() {
+    for (var student in students) {
+      if (student.status == AttendanceStatus.absent) {
+        student.status = AttendanceStatus.notMarked;
+      } else if (student.status == AttendanceStatus.notMarked) {
+        student.status = AttendanceStatus.absent;
+      }
+    }
+  }
+
+  /// When navigating back, terminate the active session.
+  /// If there is unsaved attendance, prompt the user first.
   Future<bool> _handleBackNavigation() async {
-    if (!_isAttendanceSaved && _isAnyAttendanceMarked()) {
-      final shouldPop =
+    bool shouldPop = true;
+    if (!_isAttendanceSaved &&
+        students.any((s) => s.status != AttendanceStatus.notMarked)) {
+      shouldPop =
           await DialogsAndPrompts.showUnsavedAttendanceDialog(context) ?? false;
-      return shouldPop;
     }
-    return true;
+    if (shouldPop) {
+      try {
+        _logger.info(
+            "Terminating active session on back navigation for section ${widget.sectionId}");
+        await _apiService.endLiveSession(widget.sectionId.toString());
+        _logger.info("Active session terminated successfully.");
+      } catch (e) {
+        _logger
+            .severe("Error terminating active session on back navigation: $e");
+      }
+    }
+    return shouldPop;
   }
 
-  /// Check if any student's attendance has been marked
-  bool _isAnyAttendanceMarked() {
-    return students
-        .any((student) => student.status != AttendanceStatus.notMarked);
-  }
-
-  /// Clear all attendance selections after user confirmation
   Future<void> _clearAllSelections() async {
     final confirm =
         await DialogsAndPrompts.showConfirmClearAllDialog(context) ?? false;
@@ -133,81 +180,87 @@ class _AttendancePageState extends State<AttendancePage> {
         for (var student in students) {
           student.status = AttendanceStatus.notMarked;
         }
-        _isSelectAll = false;
         _isAttendanceSaved = false;
       });
     }
   }
 
-  /// Submit attendance to the API
+  /// First close the session and then save the attendance.
   Future<void> _handleSubmitAttendance() async {
     try {
-      // Prepare attendance records in the exact format needed
+      // First, close the live session.
+      _logger.info("Closing session for section ${widget.sectionId}");
+      await _apiService.endLiveSession(widget.sectionId.toString());
+      _logger.info("Session closed successfully.");
+
+      // Now, prepare and submit the attendance.
       final attendanceRecords = students
           .map((student) => {
                 'attendanceId': student.attendanceId,
                 'id': student.id,
                 'status':
-                    student.status == AttendanceStatus.present ? 'G' : 'R',
+                    (student.status == AttendanceStatus.present) ? 'G' : 'R',
               })
           .toList();
 
-      // Create the payload matching the exact JSON structure
-      final Map<String, dynamic> payload = {
+      final payload = {
         'classNumber': widget.classNumber,
         'date': widget.date,
         'year': widget.currentYear,
-        'month': _getMonthAbbreviation(widget.month), // Convert to month name
+        'month': _getMonthName(widget.month),
         'sectionId': widget.sectionId,
         'attendance': attendanceRecords,
       };
 
-      // Log the payload for debugging
       _logger.info('Saving attendance payload: $payload');
-
-      // Submit the attendance
       await _apiService.submitAttendance(payload);
 
-      // Show success dialog
+      // On successful save, trigger light haptic and play success sound.
+      HapticFeedback.lightImpact();
+      await _playSound('success.mp3');
+
       final success = await DialogsAndPrompts.showSuccessDialog(
         context,
-        'Attendance saved successfully. You can modify the attendance in NITRis web portal next month.',
+        'Attendance saved successfully.',
       );
 
       if (success == true) {
-        // Navigate to the home screen and clear the stack
         Navigator.of(context)
-            .pushNamedAndRemoveUntil('/attendanceHome', (route) => false);
+            .pushNamedAndRemoveUntil('/attendanceHome', (r) => false);
       }
 
-      setState(() {
-        _isAttendanceSaved = true;
-      });
-    } catch (e, stackTrace) {
-      _logger.severe('Error submitting attendance: $e', e, stackTrace);
+      setState(() => _isAttendanceSaved = true);
+    } catch (e, st) {
+      _logger.severe('Error submitting attendance: $e', e, st);
+      // On error, vibrate and play error sound.
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      DialogsAndPrompts.showFailureDialog(
+          context, 'Failed to save attendance: $e');
+    }
+  }
+
+  Future<void> _handleSubmitButtonPressed() async {
+    if (_isManualMode &&
+        students
+            .where((s) => s.status == AttendanceStatus.notMarked)
+            .isNotEmpty) {
       DialogsAndPrompts.showFailureDialog(
         context,
-        'Failed to save attendance: $e',
+        'Please mark all students (none can be "unmarked") before submitting.',
       );
+      return;
     }
-  }
-
-  /// Handle submit button press with confirmation
-  Future<void> _handleSubmitButtonPressed() async {
     final confirm =
         await DialogsAndPrompts.showConfirmSubmissionDialog(context) ?? false;
-    if (confirm) {
-      await _handleSubmitAttendance();
-    }
+    if (confirm) await _handleSubmitAttendance();
   }
 
-  /// Handle select all checkbox change with confirmation
   Future<void> _handleSelectAll(bool value) async {
     final confirm =
         await DialogsAndPrompts.showConfirmSelectAllDialog(context) ?? false;
     if (confirm) {
       setState(() {
-        _isSelectAll = value;
         for (var student in students) {
           student.status =
               value ? AttendanceStatus.present : AttendanceStatus.notMarked;
@@ -217,39 +270,57 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  /// Update individual student's attendance status
   void _updateStudentStatus(int index, AttendanceStatus status) {
     setState(() {
       students[index].status = status;
       _isAttendanceSaved = false;
-      // Update _isSelectAll based on current attendance statuses
-      _isSelectAll = students
-          .every((student) => student.status == AttendanceStatus.present);
     });
   }
 
-  /// Show a custom dialog for present students with an icon-only option to mark them absent.
-  void _showPresentStudentsDialog(List<Student> presentStudents) {
+  /// Generic method to show an attendance dialog.
+  void _showAttendanceDialog({
+    required String title,
+    required bool Function(Student) filter,
+    required IconData actionIcon,
+    required String actionTooltip,
+    required AttendanceStatus newStatus,
+    Color? iconColor,
+  }) {
+    final count = students.where(filter).length;
+    if (count == 0) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title, style: TextStyle(color: AppColors.primaryColor)),
+          content: Center(
+              child: Text(
+                  'No student marked ${title.toLowerCase().split(" ")[0]}.')),
+          actions: [
+            TextButton(
+              style:
+                  TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
-      builder: (context) {
-        // Use Dialog for a custom look; wrap with StatefulBuilder to update the list.
+      builder: (ctx) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: StatefulBuilder(
-            builder: (context, setStateDialog) {
-              // Refresh the list from the parent state.
-              List<Student> localPresentStudents = students
-                  .where(
-                      (student) => student.status == AttendanceStatus.present)
-                  .toList();
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.85,
+            builder: (ctx, setStateDialog) {
+              final localStudents = students.where(filter).toList();
+              return SizedBox(
+                height: MediaQuery.of(ctx).size.height * 0.85,
                 child: Column(
                   children: [
-                    // Header with title and close button.
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
@@ -264,26 +335,25 @@ class _AttendancePageState extends State<AttendancePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            "Present Students (${localPresentStudents.length})",
+                            "$title (${localStudents.length})",
                             style: const TextStyle(
                                 color: Colors.white, fontSize: 12),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                          )
+                            onPressed: () => Navigator.of(ctx).pop(),
+                          ),
                         ],
                       ),
                     ),
-                    // List of students styled similarly to student tiles.
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.all(8),
-                        itemCount: localPresentStudents.length,
-                        itemBuilder: (context, index) {
-                          Student student = localPresentStudents[index];
+                        itemCount: localStudents.length,
+                        itemBuilder: (context, i) {
+                          final student = localStudents[i];
+                          final idx =
+                              students.indexWhere((s) => s.id == student.id);
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
@@ -291,10 +361,9 @@ class _AttendancePageState extends State<AttendancePage> {
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                )
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2))
                               ],
                             ),
                             child: ListTile(
@@ -309,23 +378,15 @@ class _AttendancePageState extends State<AttendancePage> {
                                     fontSize: 14, color: Colors.grey),
                               ),
                               trailing: IconButton(
+                                icon: Icon(actionIcon,
+                                    color: iconColor, size: 28),
+                                tooltip: actionTooltip,
                                 onPressed: () {
-                                  // Mark this student as absent.
-                                  int studentIndex = students
-                                      .indexWhere((s) => s.id == student.id);
-                                  if (studentIndex != -1) {
-                                    _updateStudentStatus(
-                                        studentIndex, AttendanceStatus.absent);
-                                    // Refresh the dialog.
+                                  if (idx != -1) {
+                                    _updateStudentStatus(idx, newStatus);
                                     setStateDialog(() {});
                                   }
                                 },
-                                icon: const Icon(
-                                  Icons.remove_circle_outline,
-                                  color: AppColors.darkRed,
-                                  size: 28,
-                                ),
-                                tooltip: 'Mark Absent',
                               ),
                             ),
                           );
@@ -342,146 +403,390 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  /// Show a custom dialog for absent students with an icon-only option to mark them present.
-  void _showAbsentStudentsDialog(List<Student> absentStudents) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+  void _showPresentStudentsDialog() {
+    _showAttendanceDialog(
+      title: "Present Students",
+      filter: (s) => s.status == AttendanceStatus.present,
+      actionIcon: Icons.remove_circle_outline,
+      actionTooltip: 'Mark Absent',
+      newStatus: AttendanceStatus.absent,
+      iconColor: AppColors.darkRed,
+    );
+  }
+
+  void _showAbsentStudentsDialog() {
+    _showAttendanceDialog(
+      title: "Absent Students",
+      filter: (s) => s.status == AttendanceStatus.absent,
+      actionIcon: Icons.check_circle_outline,
+      actionTooltip: 'Mark Present',
+      newStatus: AttendanceStatus.present,
+      iconColor: AppColors.darkGreen,
+    );
+  }
+
+  /// Helper function to calculate the distance (in meters) between two coordinates.
+  double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000; // Earth's radius in meters
+    final dLat = (lat2 - lat1) * (pi / 180);
+    final dLon = (lon2 - lon1) * (pi / 180);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180)) *
+            cos(lat2 * (pi / 180)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  /// Fetches the current device (teacher's) location.
+  Future<Position> _getTeacherLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Location services are disabled.');
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permissions are denied.');
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Location permissions are permanently denied.');
+    }
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+  }
+
+  /// Updated QR code scanned handler.
+  /// Expects a QR code in the format:
+  ///   <roll number, long, lat, timestamp, sectionid>
+  /// Performs the following checks:
+  ///   - Validates QR code format.
+  ///   - Ensures the QR code's timestamp (4th value) is after the session start time.
+  ///   - Checks student location against teacher's location.
+  Future<void> _handleScannedCode(String scannedData) async {
+    _logger.info("Scanned: $scannedData");
+    String data = scannedData.trim();
+    // Remove angle brackets if present.
+    if (data.startsWith('<') && data.endsWith('>')) {
+      data = data.substring(1, data.length - 1);
+    }
+    final parts = data.split(',');
+    if (parts.length != 5) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: Text(
+            'Invalid QR format: $scannedData',
+            style: const TextStyle(color: Colors.white),
           ),
-          child: StatefulBuilder(
-            builder: (context, setStateDialog) {
-              // Refresh list of absent students.
-              List<Student> localAbsentStudents = students
-                  .where((student) => student.status == AttendanceStatus.absent)
-                  .toList();
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.85,
-                child: Column(
-                  children: [
-                    // Header with title and close button.
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryColor,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(12),
-                          topRight: Radius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Absent Students (${localAbsentStudents.length})",
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                          )
-                        ],
-                      ),
+        ),
+      );
+      return;
+    }
+
+    final rollNo = parts[0].trim();
+    final studentLong = double.tryParse(parts[1].trim());
+    final studentLat = double.tryParse(parts[2].trim());
+    final qrTimestampStr = parts[3].trim();
+    // parts[4] is sectionId (ignored)
+
+    if (studentLong == null || studentLat == null) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: const Text(
+            'Invalid location data in QR code.',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Convert the QR timestamp and sessionTime to DateTime objects.
+    final qrTimestamp = DateTime.tryParse(qrTimestampStr.replaceAll(' ', 'T'));
+    final sessionTimestamp =
+        DateTime.tryParse(widget.sessionTime.replaceAll(' ', 'T'));
+    if (qrTimestamp == null || sessionTimestamp == null) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: const Text(
+            'Invalid timestamp format.',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Check that the QR code timestamp is after (or equal to) the session start time.
+    if (qrTimestamp.isBefore(sessionTimestamp)) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: Text(
+            'QR code generated before session start. Please use a valid QR code.',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Get teacher's current location (device location)
+    late Position teacherPosition;
+    try {
+      teacherPosition = await _getTeacherLocation();
+      _logger.info(
+          "Teacher location: lat: ${teacherPosition.latitude}, long: ${teacherPosition.longitude}");
+    } catch (e) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: Text(
+            'Error fetching teacher location: $e',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+    final teacherLat = teacherPosition.latitude;
+    final teacherLong = teacherPosition.longitude;
+    final distance =
+        calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
+
+// distance Adjustment in mtrs
+
+    if (distance > 100) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: Text(
+            'Student is not within the required range (distance: ${distance.toStringAsFixed(2)} m)',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Look up the student using a case‑insensitive roll number match.
+    final idx = students
+        .indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
+    if (idx == -1) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: Text(
+            'No student found with rollNo: $rollNo',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      students[idx].status = AttendanceStatus.present;
+      _isAttendanceSaved = false;
+    });
+    // On successfully marking present, trigger heavy impact and play success sound.
+    HapticFeedback.heavyImpact();
+    await _playSound('success.mp3');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.green[600],
+        content: Text(
+          'Marked ${students[idx].name} present!',
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  void _onQRViewCreated(QRViewController controller) {
+    _qrController = controller;
+    controller.scannedDataStream.listen((scanData) {
+      final code = scanData.code ?? '';
+      // Process only if a new QR code is scanned
+      if (code.isNotEmpty && code != _lastScannedCode) {
+        _lastScannedCode = code;
+        _handleScannedCode(code);
+      }
+    });
+  }
+
+  Widget _buildAttendanceHeader() {
+    final presentCount =
+        students.where((s) => s.status == AttendanceStatus.present).length;
+    final absentCount =
+        students.where((s) => s.status == AttendanceStatus.absent).length;
+    final unmarkedCount =
+        students.where((s) => s.status == AttendanceStatus.notMarked).length;
+    final allPresent = students.isNotEmpty &&
+        students.every((s) => s.status == AttendanceStatus.present);
+    return AttendanceHeader(
+      presentCount: presentCount,
+      absentCount: absentCount,
+      unmarkedCount: unmarkedCount,
+      totalStudents: students.length,
+      isSelectAll: allPresent,
+      onSelectAllChanged: _handleSelectAll,
+      onClear: _clearAllSelections,
+      onPresentTap: _showPresentStudentsDialog,
+      onAbsentTap: _showAbsentStudentsDialog,
+    );
+  }
+
+  Widget _buildQRView() {
+    return Container(
+      color: const Color(0xFFFFE4E9),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          QRView(
+            key: _qrViewKey,
+            onQRViewCreated: (controller) {
+              try {
+                _onQRViewCreated(controller);
+              } catch (e) {
+                _logger.severe('Error creating QR view: $e');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: Colors.red[700],
+                    content: Text(
+                      'Camera error: $e',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    // List of absent students.
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: localAbsentStudents.length,
-                        itemBuilder: (context, index) {
-                          Student student = localAbsentStudents[index];
-                          return Container(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                )
-                              ],
-                            ),
-                            child: ListTile(
-                              title: Text(
-                                student.name,
-                                style: const TextStyle(
-                                    fontSize: 16, color: Colors.black),
-                              ),
-                              subtitle: Text(
-                                "Roll No: ${student.rollNo}",
-                                style: const TextStyle(
-                                    fontSize: 14, color: Colors.grey),
-                              ),
-                              trailing: IconButton(
-                                onPressed: () {
-                                  // Mark this student as present.
-                                  int studentIndex = students
-                                      .indexWhere((s) => s.id == student.id);
-                                  if (studentIndex != -1) {
-                                    _updateStudentStatus(
-                                        studentIndex, AttendanceStatus.present);
-                                    // Refresh the dialog.
-                                    setStateDialog(() {});
-                                  }
-                                },
-                                icon: const Icon(
-                                  Icons.check_circle_outline,
-                                  color: AppColors.darkGreen,
-                                  size: 28,
-                                ),
-                                tooltip: 'Mark Present',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
+                  ),
+                );
+              }
             },
+            overlay: QrScannerOverlayShape(
+              borderColor: Colors.redAccent,
+              borderRadius: 10,
+              borderLength: 20,
+              borderWidth: 10,
+              cutOutSize: 250,
+            ),
           ),
+          const Positioned(
+            width: 200,
+            child: Divider(
+              thickness: 2,
+              color: Colors.redAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualListView() {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 80),
+      itemCount: students.length,
+      itemBuilder: (context, index) {
+        final student = students[index];
+        return StudentTile(
+          index: index + 1,
+          student: student,
+          isSmallDevice: true,
+          onMarkPresent: () =>
+              _updateStudentStatus(index, AttendanceStatus.present),
+          onMarkAbsent: () =>
+              _updateStudentStatus(index, AttendanceStatus.absent),
         );
       },
     );
+  }
+
+  Widget _buildBottomButtons() {
+    const buttonPadding = EdgeInsets.symmetric(vertical: 16);
+    final buttonStyle = ElevatedButton.styleFrom(
+      backgroundColor: AppColors.primaryColor,
+      foregroundColor: Colors.white,
+      padding: buttonPadding,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+
+    if (!_isManualMode) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        color: Colors.white,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: buttonStyle,
+                onPressed: () {
+                  setState(() {
+                    _swapAbsentNotMarked();
+                    _isManualMode = true;
+                  });
+                },
+                child: const Text('Take Attendance Manually'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: buttonStyle,
+                onPressed: _handleSubmitButtonPressed,
+                child: const Text('Save Attendance'),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        color: Colors.white,
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: buttonStyle,
+            onPressed: _handleSubmitButtonPressed,
+            child: const Text('Save Attendance'),
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Count attendance statuses.
-    final presentCount = students
-        .where((student) => student.status == AttendanceStatus.present)
-        .length;
-    final absentCount = students
-        .where((student) => student.status == AttendanceStatus.absent)
-        .length;
-    final unmarkedCount = students
-        .where((student) => student.status == AttendanceStatus.notMarked)
-        .length;
-
-    // Filter the students for the popup dialogs.
-    final presentStudents = students
-        .where((student) => student.status == AttendanceStatus.present)
-        .toList();
-    final absentStudents = students
-        .where((student) => student.status == AttendanceStatus.absent)
-        .toList();
-
     return WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: AppColors.primaryColor,
-          elevation: 0,
           centerTitle: true,
+          elevation: 0,
           title: Text(
             '${widget.subject.subjectCode} - ${widget.subject.subjectName}',
             style: const TextStyle(fontSize: 16, color: Colors.white),
@@ -490,101 +795,45 @@ class _AttendancePageState extends State<AttendancePage> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
             onPressed: () async {
-              final shouldPop = await _handleBackNavigation();
-              if (shouldPop) {
-                Navigator.of(context).pop();
-              }
+              if (await _handleBackNavigation()) Navigator.of(context).pop();
             },
           ),
+          actions: [
+            if (_isManualMode)
+              IconButton(
+                icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                tooltip: 'Switch to QR mode',
+                onPressed: () {
+                  setState(() {
+                    _swapAbsentNotMarked();
+                    _isManualMode = false;
+                  });
+                },
+              )
+          ],
         ),
+        bottomNavigationBar: _buildBottomButtons(),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
-                  // Display semester, academic year, class number, and formatted date.
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    width: double.infinity,
                     color: AppColors.primaryColor,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: Center(
                       child: Text(
-                        '${widget.semester} ${widget.currentYear} | '
-                        '${widget.date}-${_getMonthAbbreviation(widget.month)}-'
-                        '${widget.currentYear} | '
-                        'Class ${widget.classNumber}',
+                        '${widget.semester} ${widget.currentYear} | ${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} | Class ${widget.classNumber}',
                         style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                            color: Colors.white70, fontSize: 14),
                       ),
                     ),
                   ),
-                  // Attendance Header with counts, select all, and tap callbacks for details.
-                  AttendanceHeader(
-                    presentCount: presentCount,
-                    absentCount: absentCount,
-                    unmarkedCount: unmarkedCount,
-                    totalStudents: students.length,
-                    isSelectAll: _isSelectAll,
-                    onSelectAllChanged: _handleSelectAll,
-                    onClear: _clearAllSelections,
-                    // For present tile, show our custom dialog with option to mark absent.
-                    onPresentTap: () =>
-                        _showPresentStudentsDialog(presentStudents),
-                    // For absent tile, show our custom dialog with option to mark present.
-                    onAbsentTap: () =>
-                        _showAbsentStudentsDialog(absentStudents),
-                  ),
-                  // List of students with animation.
+                  _buildAttendanceHeader(),
                   Expanded(
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          top: 0,
-                          bottom: 80, // Space for the submit button.
-                          child: AnimationLimiter(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 80),
-                              itemCount: students.length,
-                              itemBuilder: (context, index) {
-                                final student = students[index];
-                                return AnimationConfiguration.staggeredList(
-                                  position: index,
-                                  duration: const Duration(milliseconds: 300),
-                                  child: SlideAnimation(
-                                    verticalOffset: 50.0,
-                                    child: FadeInAnimation(
-                                      child: StudentTile(
-                                        index: index + 1,
-                                        student: student,
-                                        isSmallDevice: true,
-                                        onMarkPresent: () =>
-                                            _updateStudentStatus(index,
-                                                AttendanceStatus.present),
-                                        onMarkAbsent: () =>
-                                            _updateStudentStatus(
-                                                index, AttendanceStatus.absent),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        // Floating submit button.
-                        Positioned(
-                          bottom: 16,
-                          left: 16,
-                          right: 16,
-                          child: FloatingSubmitButton(
-                            isAllMarked: _isAllMarked,
-                            isSmallDevice: true,
-                            onPressed: _handleSubmitButtonPressed,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child:
+                        _isManualMode ? _buildManualListView() : _buildQRView(),
                   ),
                 ],
               ),

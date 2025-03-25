@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
+import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/attendance_screen.dart';
 
 class ClassSelectionSheet extends StatelessWidget {
@@ -17,25 +18,20 @@ class ClassSelectionSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    // Use the actual class number from the subject
+    // Calculate class number and check button availability.
     final classNumber = subject.totalClass + 1;
     final isButtonActive = classNumber >= 1 && classNumber <= 20;
 
-    // Initialize variables for the display date, current year, and integer values for day and month.
-    String displayDate = attendanceDate; // Default display as provided by the server.
+    // Process the attendanceDate (expected format "yyyy.MM.dd").
+    String displayDate = attendanceDate;
     String currentYear = "0000";
     int dayInt = 0;
     int monthInt = 0;
-
-    // Split the attendanceDate (expected format "yyyy.MM.dd") into parts.
     final parts = attendanceDate.split('.');
     if (parts.length == 3) {
-      // Extract year, month, and day from the parts.
       final year = parts[0];
       final month = parts[1];
       final day = parts[2];
-
-      // Map month numbers to their corresponding abbreviated month names.
       final monthMap = {
         '01': 'Jan',
         '02': 'Feb',
@@ -50,12 +46,8 @@ class ClassSelectionSheet extends StatelessWidget {
         '11': 'Nov',
         '12': 'Dec',
       };
-
-      // Reformat the date string into "dd-MMM-yyyy" (e.g., "14-Feb-2025").
       displayDate = '$day-${monthMap[month] ?? month}-$year';
-      // Save the current year for use in the AttendancePage.
       currentYear = year;
-      // Convert day and month to integers for navigation purposes.
       dayInt = int.tryParse(day) ?? 0;
       monthInt = int.tryParse(month) ?? 0;
     }
@@ -158,23 +150,40 @@ class ClassSelectionSheet extends StatelessWidget {
               padding: EdgeInsets.only(bottom: bottomPadding + 16),
               child: ElevatedButton(
                 onPressed: isButtonActive
-                    ? () {
-                        // Navigate to AttendancePage
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AttendancePage(
-                              subject: subject,
-                              classNumber: classNumber,
-                              semester: subject.session,
-                              currentYear: currentYear,
-                              sectionId: subject.sectionId,
-                              date: dayInt,
-                              month: monthInt,
+                    ? () async {
+                        // Create an instance of ApiService.
+                        final apiService = ApiService();
+                        try {
+                          // Trigger the active session API call.
+                          final activeSession = await apiService.startLiveSession(
+                            subject.sectionId.toString(),
+                          );
+                          print("Active session started: $activeSession");
+                          // Extract sessionTime from the response.
+                          final sessionTime = activeSession['sessionTime'];
+                          
+                          // Navigate to AttendancePage with sessionTime passed.
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AttendancePage(
+                                subject: subject,
+                                classNumber: classNumber,
+                                semester: subject.session,
+                                currentYear: currentYear,
+                                sectionId: subject.sectionId,
+                                date: dayInt,
+                                month: monthInt,
+                                sessionTime: sessionTime,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } catch (error) {
+                          print("Error starting active session: $error");
+                          // Optionally, display an error message to the user.
+                          return;
+                        }
                       }
                     : null,
                 style: ElevatedButton.styleFrom(

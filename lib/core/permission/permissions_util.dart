@@ -7,6 +7,8 @@ Future<void> requestPermissions() async {
   final permissions = [
     Permission.phone,
     Permission.notification,
+    Permission.camera,
+    Permission.location,
   ];
 
   try {
