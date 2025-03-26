@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
+import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/core/utils/date_utils.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_subject_qr_screen.dart';
 
@@ -18,7 +19,8 @@ class StudentSubjectsCardWidget extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _StudentSubjectsCardWidgetState createState() => _StudentSubjectsCardWidgetState();
+  _StudentSubjectsCardWidgetState createState() =>
+      _StudentSubjectsCardWidgetState();
 }
 
 class _StudentSubjectsCardWidgetState extends State<StudentSubjectsCardWidget> {
@@ -31,8 +33,41 @@ class _StudentSubjectsCardWidgetState extends State<StudentSubjectsCardWidget> {
     classNumber = widget.subject.totalClass;
   }
 
-  void _handleTap(BuildContext context) {
-    _showSubjectQrScreen(context);
+  Future<void> _handleTap(BuildContext context) async {
+    // Create an instance of ApiService
+    final apiService = ApiService();
+    final sectionId = widget.subject.sectionId;
+
+    try {
+      bool isActive = await apiService.checkSessionStatus(sectionId);
+      if (isActive) {
+        _showSubjectQrScreen(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              "Attendance session is not active yet. Please wait for it to start.",
+            ),
+            backgroundColor: AppColors.primaryColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error checking session status: $e"),
+          backgroundColor: AppColors.darkRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 
   void _showSubjectQrScreen(BuildContext context) {
@@ -91,7 +126,8 @@ class _StudentSubjectsCardWidgetState extends State<StudentSubjectsCardWidget> {
                   ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Row(
                     children: [
                       Container(

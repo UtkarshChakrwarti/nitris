@@ -230,7 +230,7 @@ class ApiService {
     }
   }
 
-  Future<bool> checkSessionStatus(String sectionId) async {
+  Future<bool> checkSessionStatus(int sectionId) async {
     final Uri url = Uri.parse('$baseUrlPresentsir/Session/checkstatus/$sectionId');
     final response = await _sendRequest('GET', url);
 

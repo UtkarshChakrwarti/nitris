@@ -124,7 +124,6 @@ class _AttendancePageState extends State<AttendancePage> {
     } catch (e, st) {
       _logger.severe('Error fetching students: $e', e, st);
       setState(() => _isLoading = false);
-      // On error, vibrate and play error sound.
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
       DialogsAndPrompts.showFailureDialog(
@@ -138,7 +137,6 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  /// Swaps student statuses between `absent` and `notMarked`
   void _swapAbsentNotMarked() {
     for (var student in students) {
       if (student.status == AttendanceStatus.absent) {
@@ -149,8 +147,6 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  /// When navigating back, terminate the active session.
-  /// If there is unsaved attendance, prompt the user first.
   Future<bool> _handleBackNavigation() async {
     bool shouldPop = true;
     if (!_isAttendanceSaved &&
@@ -185,15 +181,12 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  /// First close the session and then save the attendance.
   Future<void> _handleSubmitAttendance() async {
     try {
-      // First, close the live session.
       _logger.info("Closing session for section ${widget.sectionId}");
       await _apiService.endLiveSession(widget.sectionId.toString());
       _logger.info("Session closed successfully.");
 
-      // Now, prepare and submit the attendance.
       final attendanceRecords = students
           .map((student) => {
                 'attendanceId': student.attendanceId,
@@ -215,7 +208,6 @@ class _AttendancePageState extends State<AttendancePage> {
       _logger.info('Saving attendance payload: $payload');
       await _apiService.submitAttendance(payload);
 
-      // On successful save, trigger light haptic and play success sound.
       HapticFeedback.lightImpact();
       await _playSound('success.mp3');
 
@@ -232,7 +224,6 @@ class _AttendancePageState extends State<AttendancePage> {
       setState(() => _isAttendanceSaved = true);
     } catch (e, st) {
       _logger.severe('Error submitting attendance: $e', e, st);
-      // On error, vibrate and play error sound.
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
       DialogsAndPrompts.showFailureDialog(
@@ -277,7 +268,6 @@ class _AttendancePageState extends State<AttendancePage> {
     });
   }
 
-  /// Generic method to show an attendance dialog.
   void _showAttendanceDialog({
     required String title,
     required bool Function(Student) filter,
@@ -425,7 +415,6 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  /// Helper function to calculate the distance (in meters) between two coordinates.
   double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
     const R = 6371000; // Earth's radius in meters
     final dLat = (lat2 - lat1) * (pi / 180);
@@ -439,7 +428,6 @@ class _AttendancePageState extends State<AttendancePage> {
     return R * c;
   }
 
-  /// Fetches the current device (teacher's) location.
   Future<Position> _getTeacherLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -462,7 +450,9 @@ class _AttendancePageState extends State<AttendancePage> {
 
   /// Updated QR code scanned handler.
   /// Expects a QR code in the format:
-  ///   <roll number, long, lat, timestamp, sectionid>
+  ///   rollNumber|longitude|latitude|timestamp|sectionId
+  /// Example:
+  ///   223CS1098|-122.084000|37.421998|2025-03-26T06:09:28.587482|52238
   /// Performs the following checks:
   ///   - Validates QR code format.
   ///   - Ensures the QR code's timestamp (4th value) is after the session start time.
@@ -470,11 +460,19 @@ class _AttendancePageState extends State<AttendancePage> {
   Future<void> _handleScannedCode(String scannedData) async {
     _logger.info("Scanned: $scannedData");
     String data = scannedData.trim();
+
+    // Remove double quotes if present.
+    if (data.startsWith('"') && data.endsWith('"')) {
+      data = data.substring(1, data.length - 1);
+    }
+
     // Remove angle brackets if present.
     if (data.startsWith('<') && data.endsWith('>')) {
       data = data.substring(1, data.length - 1);
     }
-    final parts = data.split(',');
+
+    // Expecting QR code format: rollNumber|longitude|latitude|timestamp|sectionId
+    final parts = data.split('|');
     if (parts.length != 5) {
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
@@ -568,11 +566,9 @@ class _AttendancePageState extends State<AttendancePage> {
     }
     final teacherLat = teacherPosition.latitude;
     final teacherLong = teacherPosition.longitude;
-    final distance =
-        calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
+    final distance = calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
 
-// distance Adjustment in mtrs
-
+    // Distance adjustment in meters
     if (distance > 100) {
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
@@ -589,8 +585,7 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     // Look up the student using a case‑insensitive roll number match.
-    final idx = students
-        .indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
+    final idx = students.indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
     if (idx == -1) {
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
@@ -610,7 +605,6 @@ class _AttendancePageState extends State<AttendancePage> {
       students[idx].status = AttendanceStatus.present;
       _isAttendanceSaved = false;
     });
-    // On successfully marking present, trigger heavy impact and play success sound.
     HapticFeedback.heavyImpact();
     await _playSound('success.mp3');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -628,7 +622,6 @@ class _AttendancePageState extends State<AttendancePage> {
     _qrController = controller;
     controller.scannedDataStream.listen((scanData) {
       final code = scanData.code ?? '';
-      // Process only if a new QR code is scanned
       if (code.isNotEmpty && code != _lastScannedCode) {
         _lastScannedCode = code;
         _handleScannedCode(code);

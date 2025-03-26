@@ -350,6 +350,12 @@ static Future<List<String>> getDepartments() async {
     return currentUser != null ? convertLoginResponseToUser(currentUser) : null;
   }
 
+  // Get the current user's employee code
+  static Future<String?> getCurrentUserEmpCode() async {
+    LoginResponse? currentUser = await getLoginResponse();
+    return currentUser?.empCode;
+  }
+
   //get the current user's avatar
   static Future<String?> getCurrentUserAvatar() async {
     LoginResponse? currentUser = await getLoginResponse();
