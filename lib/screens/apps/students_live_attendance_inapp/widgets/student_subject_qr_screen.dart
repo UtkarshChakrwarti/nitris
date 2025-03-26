@@ -28,6 +28,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   bool _isLoading = true;
   String? _error;
   String? _empCode; // Employee code
+  bool _allowPop = false; // Flag to allow pop when done button is pressed
 
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -131,38 +132,22 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     final sectionId = widget.subject.sectionId.toString();
     final generatedTime = DateTime.now().toIso8601String();
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.white,         // White background for status bar
-        statusBarIconBrightness: Brightness.dark, // Dark icons in status bar
-      ),
-      child: Scaffold(
-        appBar: AppBar(
-          elevation: 0.5,
-          backgroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: Colors.black87,
-            ),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          centerTitle: true,
-          title: const Text(
-            'Attendance QR',
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          // Ensure dark icons on the status bar area above the AppBar
-          systemOverlayStyle: SystemUiOverlayStyle.dark,
+    return WillPopScope(
+      onWillPop: () async {
+        // Disable back button unless the done button has been clicked.
+        return _allowPop;
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark.copyWith(
+          statusBarColor: Colors.white, // White background for status bar
+          statusBarIconBrightness: Brightness.dark, // Dark icons in status bar
         ),
-        backgroundColor: Colors.white,
-        // SafeArea so content is below the status bar
-        body: SafeArea(
-          child: _buildBody(sectionId, generatedTime),
+        child: Scaffold(
+          // Removed the AppBar to have a full-screen design
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: _buildBody(sectionId, generatedTime),
+          ),
         ),
       ),
     );
@@ -184,6 +169,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         children: [
+           const SizedBox(height: 20),
           _buildSubjectInfoCard(),
           const SizedBox(height: 20),
           ScaleTransition(
@@ -462,7 +448,12 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
 
   Widget _buildDoneButton() {
     return ElevatedButton(
-      onPressed: () => Navigator.of(context).pop(),
+      onPressed: () {
+        setState(() {
+          _allowPop = true; // Allow pop when done is pressed
+        });
+        Navigator.of(context).pop();
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryColor,
         shape: RoundedRectangleBorder(
@@ -476,7 +467,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: Colors.white, // White text for the button
+          color: Colors.white,
         ),
       ),
     );

@@ -14,6 +14,8 @@ class UserProfilePopup extends StatefulWidget {
   final String email;
   final String cabinNumber;
   final String quarterNumber;
+  final String empType; // New parameter for employee type
+  final String empCode; // New parameter for student roll number
 
   const UserProfilePopup({
     super.key,
@@ -27,6 +29,8 @@ class UserProfilePopup extends StatefulWidget {
     required this.email,
     required this.cabinNumber,
     required this.quarterNumber,
+    required this.empType,
+    required this.empCode,
   });
 
   @override
@@ -56,6 +60,8 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
   @override
   Widget build(BuildContext context) {
     bool isImageValid = _decodedImage != null && _decodedImage!.isNotEmpty;
+
+    // Compute label width only for detail tiles that display text labels
     const List<String> labels = [
       "Mobile",
       "Work Number",
@@ -114,6 +120,22 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  // If the employee is a student and a roll number is provided, display it below the name.
+                  if (widget.empType.toLowerCase() == "student" &&
+                      widget.empCode.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        widget.empCode,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   const SizedBox(height: 6),
                   Text(
                     widget.designation,
@@ -144,27 +166,59 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
               color: Colors.white.withOpacity(0.3),
               thickness: 1,
             ),
-            if (widget.mobile.isNotEmpty)
-              _buildDetailTile(
-                  "Mobile",
+            // For student type, display phone and email fields using icons instead of text labels.
+            if (widget.empType.toLowerCase() == "student") ...[
+              if (widget.mobile.isNotEmpty)
+                _buildIconDetailTile(
+                  Icons.phone,
                   widget.mobile.startsWith("+91")
                       ? widget.mobile
                       : "+91 ${widget.mobile}",
-                  labelWidth),
-            if (widget.workNumber.isNotEmpty)
-              _buildDetailTile(
-                  "Work Number", "+91 661246 ${widget.workNumber}", labelWidth),
+                ),
+              if (widget.workNumber.isNotEmpty)
+                _buildIconDetailTile(
+                  Icons.phone,
+                  widget.workNumber.startsWith("+91")
+                      ? widget.workNumber
+                      : "+91 ${widget.workNumber}",
+                ),
+              if (widget.email.isNotEmpty)
+                _buildIconDetailTile(Icons.email, widget.email),
+            ] else ...[
+              if (widget.mobile.isNotEmpty)
+                _buildDetailTile(
+                    "Mobile",
+                    widget.mobile.startsWith("+91")
+                        ? widget.mobile
+                        : "+91 ${widget.mobile}",
+                    labelWidth),
+              if (widget.workNumber.isNotEmpty)
+                _buildDetailTile("Work Number", "+91 661246 ${widget.workNumber}", labelWidth),
+              if (widget.email.isNotEmpty)
+                _buildDetailTile("Work Email", widget.email, labelWidth),
+            ],
+            // For Residence/Hostel field:
             if (widget.residence.isNotEmpty)
               _buildDetailTile(
-                  "Residence", "+91 661246 ${widget.residence}", labelWidth),
-            if (widget.email.isNotEmpty)
-              _buildDetailTile("Work Email", widget.email, labelWidth),
-            Divider(color: Colors.white.withOpacity(0.3), thickness: 1),
+                widget.empType.toLowerCase() == "student" ? "Hostel" : "Residence",
+                widget.empType.toLowerCase() == "student"
+                    ? widget.residence
+                    : "+91 661246 ${widget.residence}",
+                labelWidth,
+              ),
+            Divider(
+              color: Colors.white.withOpacity(0.3),
+              thickness: 1,
+            ),
+            // For Cabin Number/Room Number field:
             if (widget.cabinNumber.isNotEmpty)
-              _buildDetailTile("Cabin Number", widget.cabinNumber, labelWidth),
-            if (widget.quarterNumber.isNotEmpty)
               _buildDetailTile(
-                  "Quarter Number", widget.quarterNumber, labelWidth),
+                widget.empType.toLowerCase() == "student" ? "Room Number" : "Cabin Number",
+                widget.cabinNumber,
+                labelWidth,
+              ),
+            if (widget.quarterNumber.isNotEmpty)
+              _buildDetailTile("Quarter Number", widget.quarterNumber, labelWidth),
           ],
         ),
       ),
@@ -214,6 +268,35 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
               ),
             ),
           ),
+          Expanded(
+            child: Text(
+              value.isNotEmpty ? value : 'N/A',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                letterSpacing: -0.2,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconDetailTile(IconData iconData, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            iconData,
+            color: Colors.white,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               value.isNotEmpty ? value : 'N/A',

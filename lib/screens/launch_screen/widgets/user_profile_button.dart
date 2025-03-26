@@ -80,6 +80,8 @@ class _UserProfileButtonState extends State<UserProfileButton> {
         email: _loggedInUser?.email ?? '',
         cabinNumber: _loggedInUser?.roomNo ?? '',
         quarterNumber: _loggedInUser?.quarterNo ?? '',
+        empType: _loggedInUser?.employeeType ?? '',
+        empCode: _loggedInUser?.empCode ?? '',
       ),
     );
   }
