@@ -203,8 +203,8 @@ class _ClassSelectionSheetState extends State<ClassSelectionSheet> {
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: AppColors.primaryColor,
-                  disabledForegroundColor: AppColors.primaryColor?.withOpacity(0.38),
-                  disabledBackgroundColor: AppColors.primaryColor?.withOpacity(0.12),
+                  disabledForegroundColor: AppColors.primaryColor.withOpacity(0.38),
+                  disabledBackgroundColor: AppColors.primaryColor.withOpacity(0.12),
                   minimumSize: const Size(double.infinity, 64),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),

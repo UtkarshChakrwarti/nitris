@@ -10,7 +10,6 @@ import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/stude
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_subject_card_widget.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_subject_qr_screen.dart';
 
-
 class StudentAttendanceHomeScreen extends StatefulWidget {
   const StudentAttendanceHomeScreen({Key? key}) : super(key: key);
 
@@ -19,20 +18,20 @@ class StudentAttendanceHomeScreen extends StatefulWidget {
       _StudentAttendanceHomeScreenState();
 }
 
-class _StudentAttendanceHomeScreenState
-    extends State<StudentAttendanceHomeScreen> {
+class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScreen> {
   LoginResponse? _loginResponse;
   List<Subject> _subjects = [];
-  bool _isLoading = false;
+  bool _isDataLoading = false;
+  int? _loadingSubjectIndex; // Only the tapped subject card shows loading
 
   @override
   void initState() {
     super.initState();
     _loadData();
 
-    // Set status bar color to match AppBar.
+    // Set status bar style.
     SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
+      const SystemUiOverlayStyle(
         statusBarColor: AppColors.primaryColor,
         statusBarIconBrightness: Brightness.light,
       ),
@@ -41,7 +40,7 @@ class _StudentAttendanceHomeScreenState
 
   Future<void> _loadData() async {
     setState(() {
-      _isLoading = true;
+      _isDataLoading = true;
     });
     try {
       final loginResponse = await LocalStorageService.getLoginResponse();
@@ -59,7 +58,7 @@ class _StudentAttendanceHomeScreenState
       _showErrorSnackBar(e.toString());
     } finally {
       setState(() {
-        _isLoading = false;
+        _isDataLoading = false;
       });
     }
   }
@@ -68,75 +67,83 @@ class _StudentAttendanceHomeScreenState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppColors.darkRed,
+        backgroundColor: AppColors.primaryColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  Future<void> _handleSubjectTap(Subject subject) async {
+  /// When a subject is tapped, call the API to get session status and location.
+  /// Then fetch the device location, calculate the distance and, if within 100 m,
+  /// pass the current Position along with other data to the QR generation screen.
+  Future<void> _handleSubjectTap(Subject subject, int index) async {
+    // Mark only this subject as loading.
     setState(() {
-      _isLoading = true;
+      _loadingSubjectIndex = index;
     });
     try {
       final apiService = ApiService();
-      // Call the API service method that returns status and location.
       final sessionResponse =
           await apiService.checkSessionStatus(subject.sectionId);
-      if (sessionResponse["status"] != "ACTIVE") {
-        _showErrorSnackBar(
-            "Session hasn't started yet. Please wait until the class is active.");
-      } else {
-        // Get the student's current location.
-        final currentPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-        // "location" is provided as a pipe-separated string (e.g., "12.9593588|77.7085815").
-        final sessionLocation = sessionResponse["location"];
-        final latLng = sessionLocation.split('|');
-        if (latLng.length < 2) {
-          throw Exception("Invalid session location data.");
-        }
-        final double sessionLat = double.parse(latLng[0]);
-        final double sessionLng = double.parse(latLng[1]);
-        // Calculate the distance in meters between the student's current location and the session location.
-        final distance = Geolocator.distanceBetween(
-          currentPosition.latitude,
-          currentPosition.longitude,
-          sessionLat,
-          sessionLng,
-        );
-        if (distance <= 100) {
-          // Student is within range; navigate to QR generation page.
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => StudentSubjectQrScreen(
-                subject: subject,
-                sessionResponse: sessionResponse,
-              ),
+      if (sessionResponse["status"] != "ACTIVE" || sessionResponse["location"] == null) {
+        _showErrorSnackBar("Session hasn't started yet. Please wait until the class is active.");
+        return;
+      }
+      final currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      final String sessionLocation = sessionResponse["location"]!;
+      final latLng = sessionLocation.split('|');
+      if (latLng.length < 2) {
+        throw Exception("Invalid session location data.");
+      }
+      final double sessionLat = double.parse(latLng[0]);
+      final double sessionLng = double.parse(latLng[1]);
+      double distance = Geolocator.distanceBetween(
+        currentPosition.latitude,
+        currentPosition.longitude,
+        sessionLat,
+        sessionLng,
+      );
+
+      // --- Dummy Code for Simulation ---
+      // Uncomment the lines below to simulate an out-of-range condition.
+      // const bool simulateOutOfRange = true;
+      // if (simulateOutOfRange) {
+      //   distance = 150.0;
+      // }
+      // ------------------------------------
+
+      if (distance <= 100) {
+        final attendanceDate = DateTime.now().toIso8601String();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StudentSubjectQrScreen(
+              subject: subject,
+              attendanceDate: attendanceDate,
+              currentPosition: currentPosition,
             ),
-          );
-        } else {
-          _showErrorSnackBar(
-              "Session is active, but you must be within 100 meters of the classroom to generate your QR code. Please move closer and try again.");
-        }
+          ),
+        );
+      } else {
+        _showErrorSnackBar(
+          "Session is active, but you must be within 100 meters of the classroom to generate your QR code. Please move closer and try again."
+        );
       }
     } catch (error) {
       _showErrorSnackBar(error.toString());
     } finally {
       setState(() {
-        _isLoading = false;
+        _loadingSubjectIndex = null;
       });
     }
   }
 
   PreferredSizeWidget _buildCustomAppBar() {
     return PreferredSize(
-      preferredSize: const Size.fromHeight(180), // Adjust height as needed.
+      preferredSize: const Size.fromHeight(180),
       child: Container(
         color: AppColors.primaryColor,
         child: SafeArea(
@@ -156,10 +163,7 @@ class _StudentAttendanceHomeScreenState
                       child: Center(
                         child: Text(
                           'Student Attendance',
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
                         ),
                       ),
                     ),
@@ -173,38 +177,26 @@ class _StudentAttendanceHomeScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_loginResponse != null)
-                      StudentProfileWidget(student: _loginResponse!),
+                    if (_loginResponse != null) StudentProfileWidget(student: _loginResponse!),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'Class Overview',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                         ElevatedButton.icon(
                           onPressed: _loadData,
-                          icon: Icon(Icons.update,
-                              size: 16, color: AppColors.primaryColor),
+                          icon: Icon(Icons.update, size: 16, color: AppColors.primaryColor),
                           label: Text(
                             'Update',
-                            style: TextStyle(
-                              color: AppColors.primaryColor,
-                              fontSize: 13,
-                            ),
+                            style: TextStyle(color: AppColors.primaryColor, fontSize: 13),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             elevation: 0,
                             visualDensity: VisualDensity.compact,
                           ),
@@ -222,7 +214,6 @@ class _StudentAttendanceHomeScreenState
   }
 
   Widget _buildSubjectsList() {
-    // Filter subjects that have a non-zero lecture component in the LTP value.
     final subjectsWithLectures = _subjects.where((subject) {
       if (subject.ltp.isEmpty) return false;
       final parts = subject.ltp.split('-');
@@ -236,19 +227,11 @@ class _StudentAttendanceHomeScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.warning_rounded,
-              size: 60,
-              color: AppColors.lightRed,
-            ),
+            Icon(Icons.warning_rounded, size: 60, color: AppColors.lightRed),
             const SizedBox(height: 16),
             Text(
               'No subjects available',
-              style: TextStyle(
-                color: AppColors.textColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: AppColors.textColor, fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -268,11 +251,16 @@ class _StudentAttendanceHomeScreenState
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: InkWell(
-              onTap: () => _handleSubjectTap(subject),
+              onTap: () => _handleSubjectTap(subject, index),
+              // Instead of changing the background, we define a subtle overlay color.
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              overlayColor: MaterialStateProperty.all(Colors.grey.withOpacity(0.1)),
               child: StudentSubjectsCardWidget(
                 subject: subject,
                 attendanceDate: attendanceDate,
                 index: index,
+                isLoading: _loadingSubjectIndex == index,
               ),
             ),
           );
@@ -286,12 +274,8 @@ class _StudentAttendanceHomeScreenState
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildCustomAppBar(),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryColor,
-              ),
-            )
+      body: _isDataLoading
+          ? Center(child: CircularProgressIndicator(color: AppColors.primaryColor))
           : _buildSubjectsList(),
     );
   }

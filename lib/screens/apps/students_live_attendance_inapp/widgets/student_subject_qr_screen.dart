@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For SystemChrome
 import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 
-/// Simple XOR encryption helper
+/// Simple XOR encryption helper.
 String simpleXorEncrypt(String plainText, String key) {
   final plainBytes = utf8.encode(plainText);
   final keyBytes = utf8.encode(key);
@@ -23,10 +23,12 @@ String simpleXorEncrypt(String plainText, String key) {
 class StudentSubjectQrScreen extends StatefulWidget {
   final Subject subject;
   final String attendanceDate;
+  final Position currentPosition; // Passed from the previous screen
 
   const StudentSubjectQrScreen({
     required this.subject,
     required this.attendanceDate,
+    required this.currentPosition,
     Key? key,
   }) : super(key: key);
 
@@ -36,11 +38,10 @@ class StudentSubjectQrScreen extends StatefulWidget {
 
 class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     with SingleTickerProviderStateMixin {
-  Position? _currentPosition;
   bool _isLoading = true;
   String? _error;
-  String? _empCode; // Employee code
-  String _empName = ''; // Employee name
+  String? _empCode;
+  String _empName = '';
   bool _allowPop = false;
 
   late AnimationController _animationController;
@@ -82,7 +83,6 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     try {
       _empCode = await LocalStorageService.getCurrentUserEmpCode();
       _empName = (await LocalStorageService.getCurrentUserFullName())!;
-      await _getCurrentLocation();
       setState(() => _isLoading = false);
       _animationController.forward();
     } catch (e) {
@@ -102,23 +102,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     }
   }
 
-  Future<void> _getCurrentLocation() async {
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception("Location permissions are denied.");
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception("Location permissions are permanently denied.");
-    }
-    _currentPosition = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-  }
-
-  String generateQRData(String empCode, String lat, String long, String timestamp, String sectionId) {
+  String generateQRData(
+      String empCode, String lat, String long, String timestamp, String sectionId) {
     final plainData = '$empCode|$long|$lat|$timestamp|$sectionId';
     return encryptQRData(plainData);
   }
@@ -159,8 +144,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     if (_error != null) return _buildErrorScreen(_error!);
 
     final empCode = _empCode ?? 'UNKNOWN';
-    final lat = _currentPosition?.latitude.toStringAsFixed(6) ?? '0.0';
-    final long = _currentPosition?.longitude.toStringAsFixed(6) ?? '0.0';
+    final lat = widget.currentPosition.latitude.toStringAsFixed(6);
+    final long = widget.currentPosition.longitude.toStringAsFixed(6);
     final qrData = generateQRData(empCode, lat, long, generatedTime, sectionId);
 
     return SingleChildScrollView(
@@ -238,7 +223,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 'Go Back',
@@ -254,7 +240,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   Widget _buildSubjectInfoCard() {
     String monthString;
     try {
-      monthString = DateFormat('MMMM').format(DateTime.parse(widget.attendanceDate).toLocal());
+      monthString = DateFormat('MMMM')
+          .format(DateTime.parse(widget.attendanceDate).toLocal());
     } catch (e) {
       monthString = 'N/A';
     }
@@ -277,7 +264,10 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
         children: [
           Text(
             widget.subject.subjectName,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87),
           ),
           const SizedBox(height: 8),
           Row(
@@ -305,10 +295,15 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
         children: [
           Text(
             label,
-            style: TextStyle(color: AppColors.primaryColor, fontSize: 10, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: AppColors.primaryColor,
+                fontSize: 10,
+                fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 1),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -346,11 +341,15 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.qr_code_scanner_rounded, color: AppColors.primaryColor, size: 18),
+                Icon(Icons.qr_code_scanner_rounded,
+                    color: AppColors.primaryColor, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   "Scan to Register Attendance",
-                  style: TextStyle(color: AppColors.primaryColor, fontSize: 13, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      color: AppColors.primaryColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -403,9 +402,14 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(color: AppColors.textColor.withOpacity(0.7), fontSize: 12)),
+              Text(label,
+                  style: TextStyle(
+                      color: AppColors.textColor.withOpacity(0.7),
+                      fontSize: 12)),
               const SizedBox(height: 4),
-              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -429,7 +433,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       ),
       child: const Text(
         'Done',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+        style:
+            TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
       ),
     );
   }
