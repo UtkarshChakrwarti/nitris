@@ -218,7 +218,10 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
                 labelWidth,
               ),
             if (widget.quarterNumber.isNotEmpty)
-              _buildDetailTile("Quarter Number", widget.quarterNumber, labelWidth),
+              _buildDetailTile(
+                 widget.empType.toLowerCase() == "student" ? "Hostel" :"Quarter Number", 
+                widget.quarterNumber, 
+                labelWidth),
           ],
         ),
       ),

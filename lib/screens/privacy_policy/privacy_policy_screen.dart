@@ -60,6 +60,16 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 "We may request access to certain features of your mobile device, such as the calendar, camera, contacts, microphone, reminders, sensors, SMS messages, social media accounts, storage, and other features. You can change these permissions in your device’s settings.",
               ),
               const SizedBox(height: 10),
+              // New Section Added:
+              _buildSubsectionTitle('Attendance and Location Data'),
+              _buildBulletContent(
+                "Camera Access: We require access to your device's camera to scan QR codes for recording student attendance.",
+              ),
+              const SizedBox(height: 10),
+              _buildBulletContent(
+                "Location Access: We collect both precise and approximate location data to verify attendance and ensure proper distance between faculty and students.",
+              ),
+              const SizedBox(height: 10),
               _buildSubsectionTitle('Push Notifications'),
               _buildBulletContent(
                 "We may request to send you push notifications regarding your account or the Application. You can opt-out from receiving these notifications in your device’s settings.",
@@ -133,7 +143,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
               _buildBulletContent(
                 "We may update this privacy policy from time to time. We will notify you of any changes by posting the new privacy policy on this page. Please review this privacy policy periodically for any changes.",
               ),
-              
             ],
           ),
         ),
@@ -146,7 +155,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       title,
       style: const TextStyle(
         fontSize: 18,
-         fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w500,
         color: AppColors.primaryColor,
       ),
     );
@@ -157,7 +166,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       title,
       style: const TextStyle(
         fontSize: 16,
-         fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w500,
         color: AppColors.primaryColor,
       ),
     );

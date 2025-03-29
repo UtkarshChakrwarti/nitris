@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/login.dart';
 import 'package:nitris/core/models/subject.dart';
@@ -7,6 +8,8 @@ import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_profile_widget.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_subject_card_widget.dart';
+import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_subject_qr_screen.dart';
+
 
 class StudentAttendanceHomeScreen extends StatefulWidget {
   const StudentAttendanceHomeScreen({Key? key}) : super(key: key);
@@ -27,7 +30,7 @@ class _StudentAttendanceHomeScreenState
     super.initState();
     _loadData();
 
-    // Set status bar color to match AppBar
+    // Set status bar color to match AppBar.
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: AppColors.primaryColor,
@@ -40,18 +43,14 @@ class _StudentAttendanceHomeScreenState
     setState(() {
       _isLoading = true;
     });
-
     try {
       final loginResponse = await LocalStorageService.getLoginResponse();
-
       if (loginResponse == null || loginResponse.empCode == null) {
         throw Exception("Login details not found. Please log in again.");
       }
-
       final apiService = ApiService();
       final subjectResponse =
           await apiService.getStudentSubjects(loginResponse.empCode!);
-
       setState(() {
         _loginResponse = loginResponse;
         _subjects = subjectResponse.data;
@@ -78,16 +77,73 @@ class _StudentAttendanceHomeScreenState
     );
   }
 
+  Future<void> _handleSubjectTap(Subject subject) async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final apiService = ApiService();
+      // Call the API service method that returns status and location.
+      final sessionResponse =
+          await apiService.checkSessionStatus(subject.sectionId);
+      if (sessionResponse["status"] != "ACTIVE") {
+        _showErrorSnackBar(
+            "Session hasn't started yet. Please wait until the class is active.");
+      } else {
+        // Get the student's current location.
+        final currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+        // "location" is provided as a pipe-separated string (e.g., "12.9593588|77.7085815").
+        final sessionLocation = sessionResponse["location"];
+        final latLng = sessionLocation.split('|');
+        if (latLng.length < 2) {
+          throw Exception("Invalid session location data.");
+        }
+        final double sessionLat = double.parse(latLng[0]);
+        final double sessionLng = double.parse(latLng[1]);
+        // Calculate the distance in meters between the student's current location and the session location.
+        final distance = Geolocator.distanceBetween(
+          currentPosition.latitude,
+          currentPosition.longitude,
+          sessionLat,
+          sessionLng,
+        );
+        if (distance <= 100) {
+          // Student is within range; navigate to QR generation page.
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StudentSubjectQrScreen(
+                subject: subject,
+                sessionResponse: sessionResponse,
+              ),
+            ),
+          );
+        } else {
+          _showErrorSnackBar(
+              "Session is active, but you must be within 100 meters of the classroom to generate your QR code. Please move closer and try again.");
+        }
+      }
+    } catch (error) {
+      _showErrorSnackBar(error.toString());
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   PreferredSizeWidget _buildCustomAppBar() {
     return PreferredSize(
-      preferredSize: const Size.fromHeight(180), // Adjust height as needed
+      preferredSize: const Size.fromHeight(180), // Adjust height as needed.
       child: Container(
         color: AppColors.primaryColor,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back button and title row
+              // Back button and title row.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Row(
@@ -101,20 +157,17 @@ class _StudentAttendanceHomeScreenState
                         child: Text(
                           'Student Attendance',
                           style: TextStyle(
-                            fontSize: 18, 
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white
-                          ),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white),
                         ),
                       ),
                     ),
-                    // Add extra space for symmetry if needed
                     const SizedBox(width: 48),
                   ],
                 ),
               ),
-
-              // Header content
+              // Header content.
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Column(
@@ -136,9 +189,10 @@ class _StudentAttendanceHomeScreenState
                         ),
                         ElevatedButton.icon(
                           onPressed: _loadData,
-                          icon: Icon(Icons.refresh, size: 16, color: AppColors.primaryColor),
+                          icon: Icon(Icons.update,
+                              size: 16, color: AppColors.primaryColor),
                           label: Text(
-                            'Refresh',
+                            'Update',
                             style: TextStyle(
                               color: AppColors.primaryColor,
                               fontSize: 13,
@@ -146,7 +200,8 @@ class _StudentAttendanceHomeScreenState
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -167,7 +222,16 @@ class _StudentAttendanceHomeScreenState
   }
 
   Widget _buildSubjectsList() {
-    if (_subjects.isEmpty) {
+    // Filter subjects that have a non-zero lecture component in the LTP value.
+    final subjectsWithLectures = _subjects.where((subject) {
+      if (subject.ltp.isEmpty) return false;
+      final parts = subject.ltp.split('-');
+      if (parts.isEmpty) return false;
+      final lectureCount = int.tryParse(parts[0]) ?? 0;
+      return lectureCount != 0;
+    }).toList();
+
+    if (subjectsWithLectures.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -198,15 +262,18 @@ class _StudentAttendanceHomeScreenState
       color: AppColors.primaryColor,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        itemCount: _subjects.length,
+        itemCount: subjectsWithLectures.length,
         itemBuilder: (context, index) {
-          final subject = _subjects[index];
+          final subject = subjectsWithLectures[index];
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
-            child: StudentSubjectsCardWidget(
-              subject: subject,
-              attendanceDate: attendanceDate,
-              index: index,
+            child: InkWell(
+              onTap: () => _handleSubjectTap(subject),
+              child: StudentSubjectsCardWidget(
+                subject: subject,
+                attendanceDate: attendanceDate,
+                index: index,
+              ),
             ),
           );
         },

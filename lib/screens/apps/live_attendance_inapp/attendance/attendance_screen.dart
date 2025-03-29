@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
@@ -14,6 +15,27 @@ import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/core/utils/dialogs_and_prompts.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/attendance_header.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/widgets/student_tile.dart';
+
+/// Simple XOR encryption helpers.
+String simpleXorEncrypt(String plainText, String key) {
+  final plainBytes = utf8.encode(plainText);
+  final keyBytes = utf8.encode(key);
+  final encryptedBytes = <int>[];
+  for (int i = 0; i < plainBytes.length; i++) {
+    encryptedBytes.add(plainBytes[i] ^ keyBytes[i % keyBytes.length]);
+  }
+  return base64.encode(encryptedBytes);
+}
+
+String simpleXorDecrypt(String encryptedBase64, String key) {
+  final encryptedBytes = base64.decode(encryptedBase64);
+  final keyBytes = utf8.encode(key);
+  final decryptedBytes = <int>[];
+  for (int i = 0; i < encryptedBytes.length; i++) {
+    decryptedBytes.add(encryptedBytes[i] ^ keyBytes[i % keyBytes.length]);
+  }
+  return utf8.decode(decryptedBytes);
+}
 
 class AttendancePage extends StatefulWidget {
   final int date;
@@ -161,8 +183,7 @@ class _AttendancePageState extends State<AttendancePage> {
         await _apiService.endLiveSession(widget.sectionId.toString());
         _logger.info("Active session terminated successfully.");
       } catch (e) {
-        _logger
-            .severe("Error terminating active session on back navigation: $e");
+        _logger.severe("Error terminating active session on back navigation: $e");
       }
     }
     return shouldPop;
@@ -191,8 +212,9 @@ class _AttendancePageState extends State<AttendancePage> {
           .map((student) => {
                 'attendanceId': student.attendanceId,
                 'id': student.id,
-                'status':
-                    (student.status == AttendanceStatus.present) ? 'G' : 'R',
+                'status': (student.status == AttendanceStatus.present)
+                    ? 'G'
+                    : 'R',
               })
           .toList();
 
@@ -233,9 +255,7 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Future<void> _handleSubmitButtonPressed() async {
     if (_isManualMode &&
-        students
-            .where((s) => s.status == AttendanceStatus.notMarked)
-            .isNotEmpty) {
+        students.where((s) => s.status == AttendanceStatus.notMarked).isNotEmpty) {
       DialogsAndPrompts.showFailureDialog(
         context,
         'Please mark all students (none can be "unmarked") before submitting.',
@@ -281,14 +301,15 @@ class _AttendancePageState extends State<AttendancePage> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(title, style: TextStyle(color: AppColors.primaryColor)),
+          title:
+              Text(title, style: TextStyle(color: AppColors.primaryColor)),
           content: Center(
               child: Text(
                   'No student marked ${title.toLowerCase().split(" ")[0]}.')),
           actions: [
             TextButton(
-              style:
-                  TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
+              style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primaryColor),
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('OK'),
             ),
@@ -342,8 +363,7 @@ class _AttendancePageState extends State<AttendancePage> {
                         itemCount: localStudents.length,
                         itemBuilder: (context, i) {
                           final student = localStudents[i];
-                          final idx =
-                              students.indexWhere((s) => s.id == student.id);
+                          final idx = students.indexWhere((s) => s.id == student.id);
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
@@ -415,7 +435,8 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
     const R = 6371000; // Earth's radius in meters
     final dLat = (lat2 - lat1) * (pi / 180);
     final dLon = (lon2 - lon1) * (pi / 180);
@@ -449,14 +470,10 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   /// Updated QR code scanned handler.
-  /// Expects a QR code in the format:
+  /// Expects an encrypted QR code that decrypts to the following plain text format:
   ///   rollNumber|longitude|latitude|timestamp|sectionId
-  /// Example:
+  /// Example after decryption:
   ///   223CS1098|-122.084000|37.421998|2025-03-26T06:09:28.587482|52238
-  /// Performs the following checks:
-  ///   - Validates QR code format.
-  ///   - Ensures the QR code's timestamp (4th value) is after the session start time.
-  ///   - Checks student location against teacher's location.
   Future<void> _handleScannedCode(String scannedData) async {
     _logger.info("Scanned: $scannedData");
     String data = scannedData.trim();
@@ -471,17 +488,36 @@ class _AttendancePageState extends State<AttendancePage> {
       data = data.substring(1, data.length - 1);
     }
 
-    // Expecting QR code format: rollNumber|longitude|latitude|timestamp|sectionId
-    final parts = data.split('|');
+    // Attempt to decrypt the scanned data using the simple XOR method.
+    String decryptedData;
+    try {
+      decryptedData = simpleXorDecrypt(data, 'mysecretkey');
+    } catch (e) {
+      HapticFeedback.vibrate();
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red[700],
+          content: const Text(
+            'Failed to decrypt QR code data',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Expecting decrypted QR code format: rollNumber|longitude|latitude|timestamp|sectionId
+    final parts = decryptedData.split('|');
     if (parts.length != 5) {
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red[700],
-          content: Text(
-            'Invalid QR format: $scannedData',
-            style: const TextStyle(color: Colors.white),
+          content: const Text(
+            'Invalid QR format',
+            style: TextStyle(color: Colors.white),
           ),
         ),
       );
@@ -585,7 +621,8 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     // Look up the student using a case‑insensitive roll number match.
-    final idx = students.indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
+    final idx = students.indexWhere(
+        (s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
     if (idx == -1) {
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
@@ -636,8 +673,8 @@ class _AttendancePageState extends State<AttendancePage> {
         students.where((s) => s.status == AttendanceStatus.absent).length;
     final unmarkedCount =
         students.where((s) => s.status == AttendanceStatus.notMarked).length;
-    final allPresent = students.isNotEmpty &&
-        students.every((s) => s.status == AttendanceStatus.present);
+    final allPresent =
+        students.isNotEmpty && students.every((s) => s.status == AttendanceStatus.present);
     return AttendanceHeader(
       presentCount: presentCount,
       absentCount: absentCount,
@@ -813,8 +850,8 @@ class _AttendancePageState extends State<AttendancePage> {
                   Container(
                     width: double.infinity,
                     color: AppColors.primaryColor,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8, horizontal: 16),
                     child: Center(
                       child: Text(
                         '${widget.semester} ${widget.currentYear} | ${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} | Class ${widget.classNumber}',

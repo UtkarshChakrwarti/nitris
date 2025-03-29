@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For SystemChrome
 import 'package:nitris/core/services/local/local_storage_service.dart';
@@ -7,6 +8,17 @@ import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
+
+/// Simple XOR encryption helper
+String simpleXorEncrypt(String plainText, String key) {
+  final plainBytes = utf8.encode(plainText);
+  final keyBytes = utf8.encode(key);
+  final encryptedBytes = <int>[];
+  for (int i = 0; i < plainBytes.length; i++) {
+    encryptedBytes.add(plainBytes[i] ^ keyBytes[i % keyBytes.length]);
+  }
+  return base64.encode(encryptedBytes);
+}
 
 class StudentSubjectQrScreen extends StatefulWidget {
   final Subject subject;
@@ -28,34 +40,33 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   bool _isLoading = true;
   String? _error;
   String? _empCode; // Employee code
-  bool _allowPop = false; // Flag to allow pop when done button is pressed
+  String _empName = ''; // Employee name
+  bool _allowPop = false;
 
   late AnimationController _animationController;
   late Animation<double> _animation;
 
   String _localDateString = '';
   String get _semester => widget.subject.session;
+  String get _acedmicYear => widget.subject.academicYear;
 
   @override
   void initState() {
     super.initState();
-    // Lock orientation to portrait for this screen
+    // Lock orientation to portrait mode.
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-
     _initializeAnimation();
     _formatAttendanceDate();
-    _fetchData(); // Start loading employee code and location
+    _fetchData();
   }
 
   @override
   void dispose() {
-    // Restore all orientations when leaving
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _animationController.dispose();
     super.dispose();
   }
 
-  /// Initialize your animation
   void _initializeAnimation() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -67,18 +78,12 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     );
   }
 
-  /// Fetch employee code and current location
   Future<void> _fetchData() async {
     try {
-      // 1) Get employee code from local storage
       _empCode = await LocalStorageService.getCurrentUserEmpCode();
-
-      // 2) Get current location
+      _empName = (await LocalStorageService.getCurrentUserFullName())!;
       await _getCurrentLocation();
-
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       _animationController.forward();
     } catch (e) {
       setState(() {
@@ -88,18 +93,15 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     }
   }
 
-  /// Format attendance date nicely for display
   void _formatAttendanceDate() {
     try {
-      final parsedDateTime = DateTime.parse(widget.attendanceDate).toLocal();
-      _localDateString =
-          DateFormat('dd MMM yyyy, hh:mm a').format(parsedDateTime);
+      final parsedDate = DateTime.parse(widget.attendanceDate);
+      _localDateString = DateFormat('dd MMM yyyy, hh:mm a').format(parsedDate);
     } catch (e) {
       _localDateString = widget.attendanceDate;
     }
   }
 
-  /// Get current location with permission checks
   Future<void> _getCurrentLocation() async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -116,15 +118,13 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     );
   }
 
-  /// Return a plain string for the QR code: <empCode|long|lat|timestamp|sectionId>
-  String generateQRData(
-    String empCode,
-    String lat,
-    String long,
-    String timestamp,
-    String sectionId,
-  ) {
-    return '$empCode|$long|$lat|$timestamp|$sectionId';
+  String generateQRData(String empCode, String lat, String long, String timestamp, String sectionId) {
+    final plainData = '$empCode|$long|$lat|$timestamp|$sectionId';
+    return encryptQRData(plainData);
+  }
+
+  String encryptQRData(String plainText) {
+    return simpleXorEncrypt(plainText, 'mysecretkey');
   }
 
   @override
@@ -133,21 +133,22 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     final generatedTime = DateTime.now().toIso8601String();
 
     return WillPopScope(
-      onWillPop: () async {
-        // Disable back button unless the done button has been clicked.
-        return _allowPop;
-      },
+      onWillPop: () async => _allowPop,
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.dark.copyWith(
-          statusBarColor: Colors.white, // White background for status bar
-          statusBarIconBrightness: Brightness.dark, // Dark icons in status bar
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
         ),
         child: Scaffold(
-          // Removed the AppBar to have a full-screen design
           backgroundColor: Colors.white,
-          body: SafeArea(
-            child: _buildBody(sectionId, generatedTime),
+          appBar: PreferredSize(
+            preferredSize: Size.zero,
+            child: AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+            ),
           ),
+          body: SafeArea(child: _buildBody(sectionId, generatedTime)),
         ),
       ),
     );
@@ -160,25 +161,20 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     final empCode = _empCode ?? 'UNKNOWN';
     final lat = _currentPosition?.latitude.toStringAsFixed(6) ?? '0.0';
     final long = _currentPosition?.longitude.toStringAsFixed(6) ?? '0.0';
-
-    // Generate final QR data (no encryption)
     final qrData = generateQRData(empCode, lat, long, generatedTime, sectionId);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.all(12),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-           const SizedBox(height: 20),
           _buildSubjectInfoCard(),
-          const SizedBox(height: 20),
-          ScaleTransition(
-            scale: _animation,
-            child: _buildQRCodeCard(qrData),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          ScaleTransition(scale: _animation, child: _buildQRCodeCard(qrData)),
+          const SizedBox(height: 16),
           _buildDetailsCard(lat, long, widget.subject.subjectCode),
-          const SizedBox(height: 30),
+          const SizedBox(height: 16),
           _buildDoneButton(),
         ],
       ),
@@ -188,18 +184,18 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   Widget _buildLoadingScreen() {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           LoadingAnimationWidget.staggeredDotsWave(
             color: AppColors.primaryColor,
-            size: 50,
+            size: 40,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Text(
             'Generating Attendance QR...',
             style: TextStyle(
               color: AppColors.primaryColor,
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -211,45 +207,42 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   Widget _buildErrorScreen(String error) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, color: AppColors.darkRed, size: 60),
-            const SizedBox(height: 12),
+            Icon(Icons.error_outline, color: AppColors.darkRed, size: 50),
+            const SizedBox(height: 10),
             Text(
               'QR Generation Failed',
               style: TextStyle(
                 color: AppColors.darkRed,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               error,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textColor,
-                fontSize: 14,
+                fontSize: 12,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryColor,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(30),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 'Go Back',
-                style: TextStyle(fontSize: 16, color: Colors.white),
+                style: TextStyle(fontSize: 14, color: Colors.white),
               ),
             ),
           ],
@@ -259,19 +252,23 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   }
 
   Widget _buildSubjectInfoCard() {
-    final monthString = DateFormat('MMMM')
-        .format(DateTime.parse(widget.attendanceDate).toLocal());
+    String monthString;
+    try {
+      monthString = DateFormat('MMMM').format(DateTime.parse(widget.attendanceDate).toLocal());
+    } catch (e) {
+      monthString = 'N/A';
+    }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -280,19 +277,15 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
         children: [
           Text(
             widget.subject.subjectName,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoChip('Code', widget.subject.subjectCode),
-              _buildInfoChip('Semester', _semester),
-              _buildInfoChip('Month', monthString),
+              _buildInfoPill('Code', widget.subject.subjectCode),
+              _buildInfoPill('Semester', '$_semester $_acedmicYear'),
+              _buildInfoPill('Month', monthString),
             ],
           ),
         ],
@@ -300,31 +293,22 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     );
   }
 
-  Widget _buildInfoChip(String label, String value) {
+  Widget _buildInfoPill(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.primaryColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: AppColors.primaryColor,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: AppColors.primaryColor, fontSize: 10, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          const SizedBox(height: 1),
+          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -332,45 +316,44 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
 
   Widget _buildQRCodeCard(String qrData) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           QrImageView(
             data: qrData,
             version: QrVersions.auto,
-            size: 220,
+            size: 200,
             foregroundColor: AppColors.primaryColor,
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.qr_code_scanner_rounded,
-                color: AppColors.primaryColor,
-                size: 22,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "Scan to Register Attendance",
-                style: TextStyle(
-                  color: AppColors.primaryColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.qr_code_scanner_rounded, color: AppColors.primaryColor, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  "Scan to Register Attendance",
+                  style: TextStyle(color: AppColors.primaryColor, fontSize: 13, fontWeight: FontWeight.w600),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -379,37 +362,25 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
 
   Widget _buildDetailsCard(String lat, String long, String subjectCode) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         children: [
-          _buildDetailRow(
-            Icons.access_time_outlined,
-            'Date & Time',
-            _localDateString,
-          ),
-          const Divider(height: 25),
-          _buildDetailRow(
-            Icons.class_,
-            'Subject Code',
-            subjectCode,
-          ),
-          const Divider(height: 25),
-          _buildDetailRow(
-            Icons.location_on_outlined,
-            'Location',
-            '$lat, $long',
-          ),
+          _buildDetailRow(Icons.access_time_outlined, 'Date & Time', _localDateString),
+          const Divider(height: 16),
+          _buildDetailRow(Icons.class_, 'Student Details', 'Roll No: $_empCode\nName: $_empName'),
+          const Divider(height: 16),
+          _buildDetailRow(Icons.location_on_outlined, 'Location', '$lat, $long'),
         ],
       ),
     );
@@ -417,28 +388,24 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: AppColors.primaryColor, size: 22),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: AppColors.primaryColor, size: 18),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppColors.textColor.withOpacity(0.7),
-                  fontSize: 13,
-                ),
-              ),
+              Text(label, style: TextStyle(color: AppColors.textColor.withOpacity(0.7), fontSize: 12)),
               const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -450,25 +417,19 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     return ElevatedButton(
       onPressed: () {
         setState(() {
-          _allowPop = true; // Allow pop when done is pressed
+          _allowPop = true;
         });
         Navigator.of(context).pop();
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-        elevation: 5,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        elevation: 4,
       ),
       child: const Text(
         'Done',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
       ),
     );
   }

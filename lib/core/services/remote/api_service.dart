@@ -190,7 +190,7 @@ class ApiService {
 
   Future<StudentSubjectResponse> getStudentSubjects(String userId) async {
     final Uri url =
-        Uri.parse('$baseUrlPresentsir/Student/GetSubjects?userId=$userId');
+        Uri.parse('$baseUrlPresentsir/Student/GetSubjects?userId=524CS1015');
     final response = await _sendRequest('GET', url);
 
     if (response.statusCode == 200) {
@@ -204,8 +204,10 @@ class ApiService {
   }
 
   // Start the live attendance session
-  Future<Map<String, dynamic>> startLiveSession(String sectionId) async {
-    final Uri url = Uri.parse('$baseUrlPresentsir/Session/Active/$sectionId');
+  Future<Map<String, dynamic>> startLiveSession(
+      String sectionId, String latLongString) async {
+    final Uri url = Uri.parse(
+        '$baseUrlPresentsir/Session/Active/$sectionId/$latLongString');
     final response = await _sendRequest('POST', url);
 
     if (response.statusCode == 200) {
@@ -230,16 +232,21 @@ class ApiService {
     }
   }
 
-  Future<bool> checkSessionStatus(int sectionId) async {
-    final Uri url = Uri.parse('$baseUrlPresentsir/Session/checkstatus/$sectionId');
+  Future<Map<String, String>> checkSessionStatus(int sectionId) async {
+    final Uri url =
+        Uri.parse('$baseUrlPresentsir/Session/checkstatus/$sectionId');
     final response = await _sendRequest('GET', url);
 
     if (response.statusCode == 200) {
       final result = await response.stream.bytesToString();
       final Map<String, dynamic> jsonData = jsonDecode(result);
-      return jsonData['status'] == 'ACTIVE';
+      return {
+        'status': jsonData['status'] as String,
+        'location': jsonData['location'] as String,
+      };
     } else {
-      _logger.severe('Failed to check session status: ${response.reasonPhrase}');
+      _logger
+          .severe('Failed to check session status: ${response.reasonPhrase}');
       throw Exception('Failed to check session status');
     }
   }

@@ -25,6 +25,7 @@ class StudentSubjectsCardWidget extends StatefulWidget {
 
 class _StudentSubjectsCardWidgetState extends State<StudentSubjectsCardWidget> {
   bool _isPressed = false;
+  bool _isLoading = false;
   late int classNumber;
 
   @override
@@ -34,36 +35,58 @@ class _StudentSubjectsCardWidgetState extends State<StudentSubjectsCardWidget> {
   }
 
   Future<void> _handleTap(BuildContext context) async {
+    if (_isLoading) return; // Prevent multiple taps while loading
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
     // Create an instance of ApiService
     final apiService = ApiService();
     final sectionId = widget.subject.sectionId;
 
     try {
       bool isActive = await apiService.checkSessionStatus(sectionId);
+      
+      // Add a small delay if the API returns too quickly to show loading state
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      
       if (isActive) {
         _showSubjectQrScreen(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              "Attendance session is not active yet. Please wait for it to start.",
+              "Attendance session is not active yet. Please wait for faculty to start taking attendance.",
             ),
             backgroundColor: AppColors.primaryColor,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
         );
       }
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error checking session status: $e"),
           backgroundColor: AppColors.darkRed,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       );
@@ -71,26 +94,20 @@ class _StudentSubjectsCardWidgetState extends State<StudentSubjectsCardWidget> {
   }
 
   void _showSubjectQrScreen(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
-      builder: (BuildContext context) {
-        return SizedBox(
-          height: MediaQuery.of(context).size.height,
-          child: StudentSubjectQrScreen(
-            subject: widget.subject,
-            attendanceDate: widget.attendanceDate,
-          ),
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentSubjectQrScreen(
+          subject: widget.subject,
+          attendanceDate: widget.attendanceDate,
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    String formattedMonth = getMonthAbbreviation(widget.attendanceDate);
+    getMonthAbbreviation(widget.attendanceDate);
 
     return AnimationConfiguration.staggeredList(
       position: widget.index,
@@ -108,72 +125,141 @@ class _StudentSubjectsCardWidgetState extends State<StudentSubjectsCardWidget> {
               duration: const Duration(milliseconds: 100),
               curve: Curves.easeOut,
               child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.white, Color(0xFFF9F9F9)],
+                  gradient: LinearGradient(
+                    colors: _isLoading 
+                      ? [const Color(0xFFF0F8FF), const Color(0xFFE6F2FF)]
+                      : [Colors.white, const Color(0xFFF9F9F9)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryColor.withOpacity(0.15),
-                      spreadRadius: 2,
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+                      color: _isLoading
+                          ? AppColors.primaryColor.withOpacity(0.2)
+                          : AppColors.primaryColor.withOpacity(0.12),
+                      spreadRadius: _isLoading ? 2 : 1,
+                      blurRadius: _isLoading ? 8 : 6,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryColor.withOpacity(0.12),
+                          color: AppColors.primaryColor.withOpacity(_isLoading ? 0.18 : 0.12),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.menu_book_rounded,
-                          color: AppColors.primaryColor,
-                          size: 32,
-                        ),
+                        child: _isLoading
+                            ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.primaryColor,
+                                  ),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.menu_book_rounded,
+                                color: AppColors.primaryColor,
+                                size: 24,
+                              ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              widget.subject.subjectName,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    widget.subject.subjectName,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.visible,
+                                  ),
+                                ),
+                                if (_isLoading)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Checking...',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.primaryColor,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${widget.subject.subjectCode} | '
-                              '${widget.subject.subjectNature} | '
-                              '${widget.subject.credit} Credits | '
-                              '${widget.subject.timeSlot} | '
-                              '#$classNumber classes taken in $formattedMonth',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
-                                height: 1.4,
-                              ),
+                            const SizedBox(height: 3),
+                            // First row of details
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    '${widget.subject.subjectCode} | ${widget.subject.credit} Credits',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.visible,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            // Second row of details
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    '${widget.subject.subjectNature} | ${widget.subject.timeSlot}${widget.subject.roomNo.isNotEmpty ? ' | Room# ${widget.subject.roomNo}' : ''}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: AppColors.secondaryColor,
-                        size: 20,
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: _isLoading
+                            ? Container(
+                                key: const ValueKey('loading'),
+                                width: 16,
+                                height: 16,
+                              )
+                            : const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: AppColors.secondaryColor,
+                                size: 16,
+                                key: ValueKey('arrow'),
+                              ),
                       ),
                     ],
                   ),
