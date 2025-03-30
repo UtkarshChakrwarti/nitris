@@ -43,7 +43,8 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
     selectedSubject = subjects.first;
     selectedMonth = months[DateTime.now().month - 1];
     selectedYear = DateTime.now().year;
-    _focusedDay = DateTime(_getMonthIndex(selectedMonth!), 1, selectedYear!);
+    // Correct order: year, month, day.
+    _focusedDay = DateTime(selectedYear!, _getMonthIndex(selectedMonth!), 1);
     _selectedDay = DateTime.now();
     _generateMockData();
   }
@@ -153,8 +154,7 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
     DateTime firstDayNextMonth = monthIndex == 12
         ? DateTime(year + 1, 1, 1)
         : DateTime(year, monthIndex + 1, 1);
-    DateTime lastDayCurrentMonth =
-        firstDayNextMonth.subtract(const Duration(days: 1));
+    DateTime lastDayCurrentMonth = firstDayNextMonth.subtract(const Duration(days: 1));
     return lastDayCurrentMonth.day;
   }
 
@@ -168,8 +168,7 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
 
   double getAttendancePercentage(AttendanceData data) {
     int totalClasses = data.attendanceDays.length;
-    int presentCount =
-        data.attendanceDays.where((d) => d.status == AttendanceStatus.present).length;
+    int presentCount = data.attendanceDays.where((d) => d.status == AttendanceStatus.present).length;
     if (totalClasses == 0) return 0;
     return (presentCount / totalClasses) * 100;
   }
@@ -193,8 +192,6 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
       selectedYear = now.year;
       _focusedDay = now;
       _selectedDay = now;
-      
-      // Give haptic feedback when pressing the Today button
       HapticFeedback.lightImpact();
     });
   }
@@ -203,9 +200,7 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
   Widget _buildAttendanceSummary(AttendanceData data) {
     double percentage = getAttendancePercentage(data);
     int totalClasses = data.attendanceDays.length;
-    int presentClasses = data.attendanceDays
-        .where((d) => d.status == AttendanceStatus.present)
-        .length;
+    int presentClasses = data.attendanceDays.where((d) => d.status == AttendanceStatus.present).length;
     int absentClasses = totalClasses - presentClasses;
     
     Color statusColor = getAttendanceStatusColor(percentage);
@@ -219,47 +214,42 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.primaryColor.withOpacity(0.2),
-                      radius: 40,
-                      child: Text(
-                        data.studentName.substring(0, 1),
-                        style: TextStyle(
-                          color: AppColors.primaryColor,
+                CircleAvatar(
+                  backgroundColor: AppColors.primaryColor.withOpacity(0.2),
+                  radius: 40,
+                  child: Text(
+                    data.studentName.substring(0, 1),
+                    style: TextStyle(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        data.studentName,
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 16,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            data.studentName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "Roll No: ${data.studentRollNo}",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        "Roll No: ${data.studentRollNo}",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -540,13 +530,8 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
                               onChanged: (value) {
                                 setState(() {
                                   selectedMonth = value;
-                                  // Update focused day to first day of selected month
                                   if (selectedMonth != null && selectedYear != null) {
-                                    _focusedDay = DateTime(
-                                      selectedYear!,
-                                      _getMonthIndex(selectedMonth!),
-                                      1,
-                                    );
+                                    _focusedDay = DateTime(selectedYear!, _getMonthIndex(selectedMonth!), 1);
                                   }
                                 });
                               },
@@ -576,13 +561,8 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
                               onChanged: (value) {
                                 setState(() {
                                   selectedYear = value;
-                                  // Update focused day to first day of selected month/year
                                   if (selectedMonth != null && selectedYear != null) {
-                                    _focusedDay = DateTime(
-                                      selectedYear!,
-                                      _getMonthIndex(selectedMonth!),
-                                      1,
-                                    );
+                                    _focusedDay = DateTime(selectedYear!, _getMonthIndex(selectedMonth!), 1);
                                   }
                                 });
                               },
@@ -597,7 +577,7 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
               
               const SizedBox(height: 16),
               
-              // Calendar with attendance markers
+              // Calendar with attendance markers wrapped in a SizedBox
               Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -631,7 +611,6 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                             
                               const SizedBox(width: 8),
                               Container(
                                 width: 10,
@@ -642,126 +621,126 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                            
                             ],
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      // TableCalendar with improved styling
-                      TableCalendar(
-                        firstDay: DateTime.utc(2020, 1, 1),
-                        lastDay: DateTime.utc(2030, 12, 31),
-                        focusedDay: _focusedDay,
-                        calendarFormat: _calendarFormat,
-                        selectedDayPredicate: (day) {
-                          return isSameDay(_selectedDay, day);
-                        },
-                        onDaySelected: (selectedDay, focusedDay) {
-                          if (!isSameDay(_selectedDay, selectedDay)) {
-                            setState(() {
-                              _selectedDay = selectedDay;
-                              _focusedDay = focusedDay;
-                            });
-                          }
-                        },
-                        availableCalendarFormats: const {CalendarFormat.month: 'Month'},
-                        onFormatChanged: (format) {
-                          setState(() {
-                            _calendarFormat = format;
-                          });
-                        },
-                        onPageChanged: (focusedDay) {
-                          // When swiping calendar months, update the dropdowns
-                          setState(() {
-                            _focusedDay = focusedDay;
-                            selectedMonth = months[focusedDay.month - 1];
-                            selectedYear = focusedDay.year;
-                          });
-                        },
-                        headerStyle: HeaderStyle(
-                          formatButtonVisible: false,
-                          titleCentered: true,
-                          titleTextStyle: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryColor,
-                          ),
-                          leftChevronIcon: Icon(
-                            Icons.chevron_left,
-                            color: AppColors.primaryColor,
-                          ),
-                          rightChevronIcon: Icon(
-                            Icons.chevron_right,
-                            color: AppColors.primaryColor,
-                          ),
-                        ),
-                        daysOfWeekStyle: DaysOfWeekStyle(
-                          weekdayStyle: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                          weekendStyle: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                        calendarStyle: CalendarStyle(
-                          defaultTextStyle: const TextStyle(fontSize: 14),
-                          weekendTextStyle: const TextStyle(fontSize: 14),
-                          outsideTextStyle: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade400,
-                          ),
-                          todayDecoration: BoxDecoration(
-                            color: AppColors.primaryColor.withOpacity(0.3),
-                            shape: BoxShape.circle,
-                          ),
-                          todayTextStyle: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          selectedDecoration: BoxDecoration(
-                            color: AppColors.primaryColor,
-                            shape: BoxShape.circle,
-                          ),
-                          markersMaxCount: 1,
-                          markerMargin: const EdgeInsets.only(top: 6),
-                        ),
-                        // Custom marker for attendance status
-                        calendarBuilders: CalendarBuilders(
-                          markerBuilder: (context, date, events) {
-                            if (events.isNotEmpty) {
-                              bool hasAbsent = false;
-                              for (var event in events) {
-                                if (event!.status == AttendanceStatus.absent) {
-                                  hasAbsent = true;
-                                  break;
-                                }
-                              }
-                              
-                              Color markerColor = hasAbsent ? Colors.red : Colors.green;
-                              return Positioned(
-                                bottom: 1,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  margin: const EdgeInsets.all(1),
-                                  decoration: BoxDecoration(
-                                    color: markerColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              );
+                      // Wrap TableCalendar in a SizedBox with a fixed height.
+                      SizedBox(
+                        height: 400,
+                        child: TableCalendar(
+                          firstDay: DateTime.utc(2020, 1, 1),
+                          lastDay: DateTime.utc(2030, 12, 31),
+                          focusedDay: _focusedDay,
+                          calendarFormat: _calendarFormat,
+                          selectedDayPredicate: (day) {
+                            return isSameDay(_selectedDay, day);
+                          },
+                          onDaySelected: (selectedDay, focusedDay) {
+                            if (!isSameDay(_selectedDay, selectedDay)) {
+                              setState(() {
+                                _selectedDay = selectedDay;
+                                _focusedDay = focusedDay;
+                              });
                             }
-                            return null;
+                          },
+                          availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+                          onFormatChanged: (format) {
+                            setState(() {
+                              _calendarFormat = format;
+                            });
+                          },
+                          onPageChanged: (focusedDay) {
+                            setState(() {
+                              _focusedDay = focusedDay;
+                              selectedMonth = months[focusedDay.month - 1];
+                              selectedYear = focusedDay.year;
+                            });
+                          },
+                          headerStyle: HeaderStyle(
+                            formatButtonVisible: false,
+                            titleCentered: true,
+                            titleTextStyle: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryColor,
+                            ),
+                            leftChevronIcon: Icon(
+                              Icons.chevron_left,
+                              color: AppColors.primaryColor,
+                            ),
+                            rightChevronIcon: Icon(
+                              Icons.chevron_right,
+                              color: AppColors.primaryColor,
+                            ),
+                          ),
+                          daysOfWeekStyle: DaysOfWeekStyle(
+                            weekdayStyle: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            weekendStyle: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          calendarStyle: CalendarStyle(
+                            defaultTextStyle: const TextStyle(fontSize: 14),
+                            weekendTextStyle: const TextStyle(fontSize: 14),
+                            outsideTextStyle: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade400,
+                            ),
+                            todayDecoration: BoxDecoration(
+                              color: AppColors.primaryColor.withOpacity(0.3),
+                              shape: BoxShape.circle,
+                            ),
+                            todayTextStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                            selectedDecoration: BoxDecoration(
+                              color: AppColors.primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            markersMaxCount: 1,
+                            markerMargin: const EdgeInsets.only(top: 6),
+                          ),
+                          // Custom marker for attendance status
+                          calendarBuilders: CalendarBuilders(
+                            markerBuilder: (context, date, events) {
+                              if (events.isNotEmpty) {
+                                bool hasAbsent = false;
+                                for (var event in events) {
+                                  if (event!.status == AttendanceStatus.absent) {
+                                    hasAbsent = true;
+                                    break;
+                                  }
+                                }
+                                Color markerColor = hasAbsent ? Colors.red : Colors.green;
+                                return Positioned(
+                                  bottom: 1,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    margin: const EdgeInsets.all(1),
+                                    decoration: BoxDecoration(
+                                      color: markerColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return null;
+                            },
+                          ),
+                          eventLoader: (day) {
+                            return _getEventsForDay(day, currentData);
                           },
                         ),
-                        eventLoader: (day) {
-                          return _getEventsForDay(day, currentData);
-                        },
                       ),
                     ],
                   ),
@@ -778,7 +757,6 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
           ),
         ),
       ),
-      // Floating action button as an alternative to the app bar Today button
       floatingActionButton: FloatingActionButton(
         onPressed: _setToday,
         backgroundColor: AppColors.primaryColor,

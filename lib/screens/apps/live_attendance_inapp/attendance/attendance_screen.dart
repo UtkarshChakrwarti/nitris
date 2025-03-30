@@ -71,8 +71,7 @@ class _AttendancePageState extends State<AttendancePage> {
   // State variables
   List<Student> students = [];
   bool _isLoading = true;
-  bool _isAttendanceSaved = false;
-  bool _isManualMode = false;
+  bool _isManualMode = true;
 
   // QR scanner variables
   final GlobalKey _qrViewKey = GlobalKey(debugLabel: 'QR');
@@ -118,14 +117,26 @@ class _AttendancePageState extends State<AttendancePage> {
     await _audioPlayer.play(AssetSource('audio/$fileName'));
   }
 
+//prodmode
+
+  // @override
+  // void reassemble() {
+  //   super.reassemble();
+  //   try {
+  //     if (Platform.isAndroid) _qrController?.pauseCamera();
+  //     _qrController?.resumeCamera();
+  //   } catch (e) {
+  //     _logger.warning('Camera reassemble error: $e');
+  //   }
+  // }
+
+  //debug mode
   @override
   void reassemble() {
     super.reassemble();
-    try {
-      if (Platform.isAndroid) _qrController?.pauseCamera();
+    // On Android, just resume the camera during reassemble.
+    if (Platform.isAndroid) {
       _qrController?.resumeCamera();
-    } catch (e) {
-      _logger.warning('Camera reassemble error: $e');
     }
   }
 
@@ -140,9 +151,9 @@ class _AttendancePageState extends State<AttendancePage> {
         students = fetchedStudents;
         _isLoading = false;
       });
-      if (!_isManualMode) {
-        _markAllAbsent();
-      }
+      // if (!_isManualMode) {
+      //   _markAllAbsent();
+      // }
     } catch (e, st) {
       _logger.severe('Error fetching students: $e', e, st);
       setState(() => _isLoading = false);
@@ -153,29 +164,12 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  void _markAllAbsent() {
-    for (var student in students) {
-      student.status = AttendanceStatus.absent;
-    }
-  }
-
-  void _swapAbsentNotMarked() {
-    for (var student in students) {
-      if (student.status == AttendanceStatus.absent) {
-        student.status = AttendanceStatus.notMarked;
-      } else if (student.status == AttendanceStatus.notMarked) {
-        student.status = AttendanceStatus.absent;
-      }
-    }
-  }
-
   Future<bool> _handleBackNavigation() async {
     bool shouldPop = true;
-    if (!_isAttendanceSaved &&
-        students.any((s) => s.status != AttendanceStatus.notMarked)) {
-      shouldPop =
-          await DialogsAndPrompts.showUnsavedAttendanceDialog(context) ?? false;
-    }
+    // Always show confirmation dialog regardless of attendance state
+    shouldPop =
+        await DialogsAndPrompts.showUnsavedAttendanceDialog(context) ?? false;
+
     if (shouldPop) {
       try {
         _logger.info(
@@ -183,7 +177,8 @@ class _AttendancePageState extends State<AttendancePage> {
         await _apiService.endLiveSession(widget.sectionId.toString());
         _logger.info("Active session terminated successfully.");
       } catch (e) {
-        _logger.severe("Error terminating active session on back navigation: $e");
+        _logger
+            .severe("Error terminating active session on back navigation: $e");
       }
     }
     return shouldPop;
@@ -197,7 +192,6 @@ class _AttendancePageState extends State<AttendancePage> {
         for (var student in students) {
           student.status = AttendanceStatus.notMarked;
         }
-        _isAttendanceSaved = false;
       });
     }
   }
@@ -212,9 +206,8 @@ class _AttendancePageState extends State<AttendancePage> {
           .map((student) => {
                 'attendanceId': student.attendanceId,
                 'id': student.id,
-                'status': (student.status == AttendanceStatus.present)
-                    ? 'G'
-                    : 'R',
+                'status':
+                    (student.status == AttendanceStatus.present) ? 'G' : 'R',
               })
           .toList();
 
@@ -242,8 +235,6 @@ class _AttendancePageState extends State<AttendancePage> {
         Navigator.of(context)
             .pushNamedAndRemoveUntil('/attendanceHome', (r) => false);
       }
-
-      setState(() => _isAttendanceSaved = true);
     } catch (e, st) {
       _logger.severe('Error submitting attendance: $e', e, st);
       HapticFeedback.vibrate();
@@ -254,14 +245,34 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   Future<void> _handleSubmitButtonPressed() async {
-    if (_isManualMode &&
-        students.where((s) => s.status == AttendanceStatus.notMarked).isNotEmpty) {
-      DialogsAndPrompts.showFailureDialog(
-        context,
-        'Please mark all students (none can be "unmarked") before submitting.',
-      );
-      return;
+    if (_isManualMode) {
+      // In manual mode, do not allow submission if any student is unmarked.
+      if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
+        DialogsAndPrompts.showFailureDialog(
+          context,
+          'Please mark all students (none can be "unmarked") before submitting.',
+        );
+        return;
+      }
+    } else {
+      // In QR mode, if there are any unmarked students, warn the teacher.
+      if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
+        final confirm = await DialogsAndPrompts.showSuccessDialog(
+          context,
+          'Some students are unmarked. If you continue, they will be marked as absent. Do you want to continue?',
+        );
+        if (confirm != true) return;
+        // Mark all unmarked students as absent
+        setState(() {
+          for (var student in students) {
+            if (student.status == AttendanceStatus.notMarked) {
+              student.status = AttendanceStatus.absent;
+            }
+          }
+        });
+      }
     }
+
     final confirm =
         await DialogsAndPrompts.showConfirmSubmissionDialog(context) ?? false;
     if (confirm) await _handleSubmitAttendance();
@@ -276,7 +287,6 @@ class _AttendancePageState extends State<AttendancePage> {
           student.status =
               value ? AttendanceStatus.present : AttendanceStatus.notMarked;
         }
-        _isAttendanceSaved = false;
       });
     }
   }
@@ -284,7 +294,6 @@ class _AttendancePageState extends State<AttendancePage> {
   void _updateStudentStatus(int index, AttendanceStatus status) {
     setState(() {
       students[index].status = status;
-      _isAttendanceSaved = false;
     });
   }
 
@@ -301,15 +310,14 @@ class _AttendancePageState extends State<AttendancePage> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title:
-              Text(title, style: TextStyle(color: AppColors.primaryColor)),
+          title: Text(title, style: TextStyle(color: AppColors.primaryColor)),
           content: Center(
               child: Text(
                   'No student marked ${title.toLowerCase().split(" ")[0]}.')),
           actions: [
             TextButton(
-              style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryColor),
+              style:
+                  TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('OK'),
             ),
@@ -363,7 +371,8 @@ class _AttendancePageState extends State<AttendancePage> {
                         itemCount: localStudents.length,
                         itemBuilder: (context, i) {
                           final student = localStudents[i];
-                          final idx = students.indexWhere((s) => s.id == student.id);
+                          final idx =
+                              students.indexWhere((s) => s.id == student.id);
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
@@ -435,8 +444,7 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-  double calculateDistance(
-      double lat1, double lon1, double lat2, double lon2) {
+  double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
     const R = 6371000; // Earth's radius in meters
     final dLat = (lat2 - lat1) * (pi / 180);
     final dLon = (lon2 - lon1) * (pi / 180);
@@ -602,7 +610,8 @@ class _AttendancePageState extends State<AttendancePage> {
     }
     final teacherLat = teacherPosition.latitude;
     final teacherLong = teacherPosition.longitude;
-    final distance = calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
+    final distance =
+        calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
 
     // Distance adjustment in meters
     if (distance > 100) {
@@ -621,8 +630,8 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     // Look up the student using a case‑insensitive roll number match.
-    final idx = students.indexWhere(
-        (s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
+    final idx = students
+        .indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
     if (idx == -1) {
       HapticFeedback.vibrate();
       await _playSound('error.mp3');
@@ -640,7 +649,6 @@ class _AttendancePageState extends State<AttendancePage> {
 
     setState(() {
       students[idx].status = AttendanceStatus.present;
-      _isAttendanceSaved = false;
     });
     HapticFeedback.heavyImpact();
     await _playSound('success.mp3');
@@ -673,8 +681,8 @@ class _AttendancePageState extends State<AttendancePage> {
         students.where((s) => s.status == AttendanceStatus.absent).length;
     final unmarkedCount =
         students.where((s) => s.status == AttendanceStatus.notMarked).length;
-    final allPresent =
-        students.isNotEmpty && students.every((s) => s.status == AttendanceStatus.present);
+    final allPresent = students.isNotEmpty &&
+        students.every((s) => s.status == AttendanceStatus.present);
     return AttendanceHeader(
       presentCount: presentCount,
       absentCount: absentCount,
@@ -761,25 +769,13 @@ class _AttendancePageState extends State<AttendancePage> {
     );
 
     if (!_isManualMode) {
+      // QR mode: Save button always active.
       return Container(
         padding: const EdgeInsets.all(16),
         color: Colors.white,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: buttonStyle,
-                onPressed: () {
-                  setState(() {
-                    _swapAbsentNotMarked();
-                    _isManualMode = true;
-                  });
-                },
-                child: const Text('Take Attendance Manually'),
-              ),
-            ),
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
@@ -793,6 +789,9 @@ class _AttendancePageState extends State<AttendancePage> {
         ),
       );
     } else {
+      // Manual mode: disable save if any student is unmarked.
+      final bool disableSave =
+          students.any((s) => s.status == AttendanceStatus.notMarked);
       return Container(
         padding: const EdgeInsets.all(16),
         color: Colors.white,
@@ -800,7 +799,7 @@ class _AttendancePageState extends State<AttendancePage> {
           width: double.infinity,
           child: ElevatedButton(
             style: buttonStyle,
-            onPressed: _handleSubmitButtonPressed,
+            onPressed: disableSave ? null : _handleSubmitButtonPressed,
             child: const Text('Save Attendance'),
           ),
         ),
@@ -829,17 +828,28 @@ class _AttendancePageState extends State<AttendancePage> {
             },
           ),
           actions: [
-            if (_isManualMode)
-              IconButton(
-                icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                tooltip: 'Switch to QR mode',
-                onPressed: () {
-                  setState(() {
-                    _swapAbsentNotMarked();
-                    _isManualMode = false;
-                  });
-                },
-              )
+            // Show custom "M" icon when in QR mode, and QR icon when in manual mode.
+            IconButton(
+              icon: !_isManualMode
+                  ? Image.asset(
+                      'assets/images/m.png',
+                      width: 40,
+                      height: 40,
+                    )
+                  : Image.asset(
+                      'assets/images/qr.png',
+                      width: 40,
+                      height: 40,
+                    ),
+              tooltip: !_isManualMode
+                  ? 'Switch to Manual mode'
+                  : 'Switch to QR mode',
+              onPressed: () {
+                setState(() {
+                  _isManualMode = !_isManualMode;
+                });
+              },
+            )
           ],
         ),
         bottomNavigationBar: _buildBottomButtons(),
@@ -850,8 +860,8 @@ class _AttendancePageState extends State<AttendancePage> {
                   Container(
                     width: double.infinity,
                     color: AppColors.primaryColor,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 8, horizontal: 16),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: Center(
                       child: Text(
                         '${widget.semester} ${widget.currentYear} | ${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} | Class ${widget.classNumber}',
