@@ -98,7 +98,7 @@ class StudentSubjectsCardWidget extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${subject.subjectNature} | ${subject.timeSlot}${subject.roomNo.isNotEmpty ? ' | Room# ${subject.roomNo}' : ''}',
+                          '${subject.subjectNature} | ${subject.timeSlot}${subject.roomNo.isNotEmpty ? ' | Room # ${subject.roomNo}' : ''}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[700],

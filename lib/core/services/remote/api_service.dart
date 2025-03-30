@@ -190,7 +190,7 @@ class ApiService {
 
   Future<StudentSubjectResponse> getStudentSubjects(String userId) async {
     final Uri url =
-        Uri.parse('$baseUrlPresentsir/Student/GetSubjects?userId=524CS1015');
+        Uri.parse('$baseUrlPresentsir/Student/GetSubjects?userId=$userId');
     final response = await _sendRequest('GET', url);
 
     if (response.statusCode == 200) {

@@ -104,9 +104,10 @@ class StudentProfileWidget extends StatelessWidget {
               Text(
                 _getFullName(),
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.normal,
                   color: Colors.white,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (student.empCode != null)

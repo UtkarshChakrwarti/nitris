@@ -119,7 +119,7 @@ class _SubjectCardWidgetState extends State<SubjectCardWidget> {
                           const SizedBox(height: 2),
                           Text(
                             '#$classNumber classes in $formattedMonth'
-                            '${widget.subject.roomNo.isNotEmpty ? ' | Room# ${widget.subject.roomNo}' : ''}',
+                            '${widget.subject.roomNo.isNotEmpty ? ' | Room # ${widget.subject.roomNo}' : ''}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
