@@ -129,8 +129,8 @@ class _MyAttendancePageState extends State<MyAttendancePage> {
           }
           
           attendanceRecords[key] = AttendanceData(
-            studentRollNo: "224CS2026",
-            studentName: "RAUSHAN RAJ",
+            studentRollNo: "223CS1098",
+            studentName: "Utkarsh Chakrwarti",
             subjectCode: _getSubjectCode(subject),
             subjectName: subject.split(" (")[0],
             month: month,
