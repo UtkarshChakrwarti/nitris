@@ -243,7 +243,7 @@ class ApiService {
       final Map<String, dynamic> jsonData = jsonDecode(result);
       return {
         'status': jsonData['status'] as String,
-        'location': (jsonData['location'] as String?) ?? '',
+        'location': jsonData['location'] as String,
       };
     } else {
       _logger

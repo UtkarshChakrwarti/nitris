@@ -9,6 +9,7 @@ import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_profile_widget.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_subject_card_widget.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/student_subject_qr_screen.dart';
+import 'package:nitris/screens/apps/students_live_attendance_inapp/widgets/view_attendance_page.dart';
 
 class StudentAttendanceHomeScreen extends StatefulWidget {
   const StudentAttendanceHomeScreen({Key? key}) : super(key: key);
@@ -85,8 +86,8 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
       //log distance
       print("Distance from classroom: ${distance.toStringAsFixed(2)} meters");
       
-      if (distance >= 10000) {      //for simulation 
-      // if (distance <= 100) {
+      // if (distance >= 10000) {      //for simulation 
+      if (distance <= 100) {
         final attendanceDate = DateTime.now().toIso8601String();
         Navigator.push(context, MaterialPageRoute(builder: (context) => StudentSubjectQrScreen(
           subject: subject,
@@ -113,10 +114,15 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
       ),
       title: const Text('My Attendance', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.calendar_today, color: Colors.white),
-          onPressed: () {},
-        ),
+       IconButton(
+        icon: const Icon(Icons.calendar_today, color: Colors.white),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MyAttendancePage()),
+          );
+        },
+      ),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(120),
