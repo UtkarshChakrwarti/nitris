@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:vibration/vibration.dart';
 
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/student.dart';
@@ -103,6 +104,8 @@ class _AttendancePageState extends State<AttendancePage> {
     super.initState();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _fetchStudents();
+
+    // Pre-load these audio assets for quick playback.
     _audioPlayer.setSource(AssetSource('audio/success.mp3'));
     _audioPlayer.setSource(AssetSource('audio/error.mp3'));
   }
@@ -114,13 +117,19 @@ class _AttendancePageState extends State<AttendancePage> {
     super.dispose();
   }
 
+  /// A small helper to handle device vibration using the `vibration` plugin.
+  Future<void> _vibrate(int durationMs) async {
+    if (await Vibration.hasVibrator()) {
+      await Vibration.vibrate(duration: durationMs);
+    }
+  }
+
   Future<void> _playSound(String fileName) async {
     await _audioPlayer.stop();
     await _audioPlayer.play(AssetSource('audio/$fileName'));
   }
 
-//prodmode
-
+  // Production mode
   @override
   void reassemble() {
     super.reassemble();
@@ -132,7 +141,7 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  // //debug mode
+  // // Debug mode
   // @override
   // void reassemble() {
   //   super.reassemble();
@@ -153,16 +162,13 @@ class _AttendancePageState extends State<AttendancePage> {
         students = fetchedStudents;
         _isLoading = false;
       });
-      // if (!_isManualMode) {
-      //   _markAllAbsent();
-      // }
     } catch (e, st) {
       _logger.severe('Error fetching students: $e', e, st);
-      setState(() => _isLoading = false);
-      HapticFeedback.vibrate();
+      // Vibrate + play error sound
+      await _vibrate(400); 
       await _playSound('error.mp3');
-      DialogsAndPrompts.showFailureDialog(
-          context, 'Failed to load students: $e');
+      setState(() => _isLoading = false);
+      DialogsAndPrompts.showFailureDialog(context, 'Failed to load students: $e');
     }
   }
 
@@ -179,8 +185,7 @@ class _AttendancePageState extends State<AttendancePage> {
         await _apiService.endLiveSession(widget.sectionId.toString());
         _logger.info("Active session terminated successfully.");
       } catch (e) {
-        _logger
-            .severe("Error terminating active session on back navigation: $e");
+        _logger.severe("Error terminating active session on back navigation: $e");
       }
     }
     return shouldPop;
@@ -208,8 +213,7 @@ class _AttendancePageState extends State<AttendancePage> {
           .map((student) => {
                 'attendanceId': student.attendanceId,
                 'id': student.id,
-                'status':
-                    (student.status == AttendanceStatus.present) ? 'G' : 'R',
+                'status': (student.status == AttendanceStatus.present) ? 'G' : 'R',
               })
           .toList();
 
@@ -225,7 +229,8 @@ class _AttendancePageState extends State<AttendancePage> {
       _logger.info('Saving attendance payload: $payload');
       await _apiService.submitAttendance(payload);
 
-      HapticFeedback.lightImpact();
+      // Short "success" vibration + success sound
+      await _vibrate(100);
       await _playSound('success.mp3');
 
       final success = await DialogsAndPrompts.showSuccessDialog(
@@ -234,30 +239,19 @@ class _AttendancePageState extends State<AttendancePage> {
       );
 
       if (success == true) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/attendanceHome', (r) => false);
+        Navigator.of(context).pushNamedAndRemoveUntil('/attendanceHome', (r) => false);
       }
     } catch (e, st) {
       _logger.severe('Error submitting attendance: $e', e, st);
-      HapticFeedback.vibrate();
+      // Vibrate + error sound
+      await _vibrate(400);
       await _playSound('error.mp3');
-      DialogsAndPrompts.showFailureDialog(
-          context, 'Failed to save attendance: $e');
+      DialogsAndPrompts.showFailureDialog(context, 'Failed to save attendance: $e');
     }
   }
 
   Future<void> _handleSubmitButtonPressed() async {
-    // if (_isManualMode) {
-    //   // In manual mode, do not allow submission if any student is unmarked.
-    //   if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
-    //     DialogsAndPrompts.showFailureDialog(
-    //       context,
-    //       'Please mark all students (none can be "unmarked") before submitting.',
-    //     );
-    //     return;
-    //   }
-    // } else {
-    // In QR mode, if there are any unmarked students, warn the teacher.
+    // In QR mode, if there are any unmarked students, show a warning
     if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
       final confirm = await DialogsAndPrompts.showConfirmReturnDialog(context);
       if (confirm != true) return;
@@ -270,13 +264,10 @@ class _AttendancePageState extends State<AttendancePage> {
         }
       });
       if (confirm == true) await _handleSubmitAttendance();
-      
+    } else {
+      // If no unmarked students, just submit.
+      await _handleSubmitAttendance();
     }
-    // }
-
-    // final confirm =
-    //     await DialogsAndPrompts.showConfirmSubmissionDialog(context) ?? false;
-    
   }
 
   Future<void> _handleSelectAll(bool value) async {
@@ -313,12 +304,13 @@ class _AttendancePageState extends State<AttendancePage> {
         builder: (ctx) => AlertDialog(
           title: Text(title, style: TextStyle(color: AppColors.primaryColor)),
           content: Center(
-              child: Text(
-                  'No student marked ${title.toLowerCase().split(" ")[0]}.')),
+            child: Text(
+              'No student marked ${title.toLowerCase().split(" ")[0]}.',
+            ),
+          ),
           actions: [
             TextButton(
-              style:
-                  TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('OK'),
             ),
@@ -332,8 +324,7 @@ class _AttendancePageState extends State<AttendancePage> {
       context: context,
       builder: (ctx) {
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: StatefulBuilder(
             builder: (ctx, setStateDialog) {
               final localStudents = students.where(filter).toList();
@@ -343,7 +334,9 @@ class _AttendancePageState extends State<AttendancePage> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryColor,
                         borderRadius: const BorderRadius.only(
@@ -357,7 +350,9 @@ class _AttendancePageState extends State<AttendancePage> {
                           Text(
                             "$title (${localStudents.length})",
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 12),
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, color: Colors.white),
@@ -372,8 +367,7 @@ class _AttendancePageState extends State<AttendancePage> {
                         itemCount: localStudents.length,
                         itemBuilder: (context, i) {
                           final student = localStudents[i];
-                          final idx =
-                              students.indexWhere((s) => s.id == student.id);
+                          final idx = students.indexWhere((s) => s.id == student.id);
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
@@ -381,25 +375,33 @@ class _AttendancePageState extends State<AttendancePage> {
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: const [
                                 BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2))
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
                               ],
                             ),
                             child: ListTile(
                               title: Text(
                                 student.name,
                                 style: const TextStyle(
-                                    fontSize: 16, color: Colors.black),
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
                               ),
                               subtitle: Text(
                                 "Roll No: ${student.rollNo}",
                                 style: const TextStyle(
-                                    fontSize: 14, color: Colors.grey),
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
                               trailing: IconButton(
-                                icon: Icon(actionIcon,
-                                    color: iconColor, size: 28),
+                                icon: Icon(
+                                  actionIcon,
+                                  color: iconColor,
+                                  size: 28,
+                                ),
                                 tooltip: actionTooltip,
                                 onPressed: () {
                                   if (idx != -1) {
@@ -474,8 +476,7 @@ class _AttendancePageState extends State<AttendancePage> {
     if (permission == LocationPermission.deniedForever) {
       throw Exception('Location permissions are permanently denied.');
     }
-    return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
   /// Updated QR code scanned handler.
@@ -502,7 +503,7 @@ class _AttendancePageState extends State<AttendancePage> {
     try {
       decryptedData = simpleXorDecrypt(data, 'mysecretkey');
     } catch (e) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -519,7 +520,7 @@ class _AttendancePageState extends State<AttendancePage> {
     // Expecting decrypted QR code format: rollNumber|longitude|latitude|timestamp|sectionId
     final parts = decryptedData.split('|');
     if (parts.length != 5) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -540,7 +541,7 @@ class _AttendancePageState extends State<AttendancePage> {
     // parts[4] is sectionId (ignored)
 
     if (studentLong == null || studentLat == null) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -556,10 +557,9 @@ class _AttendancePageState extends State<AttendancePage> {
 
     // Convert the QR timestamp and sessionTime to DateTime objects.
     final qrTimestamp = DateTime.tryParse(qrTimestampStr.replaceAll(' ', 'T'));
-    final sessionTimestamp =
-        DateTime.tryParse(widget.sessionTime.replaceAll(' ', 'T'));
+    final sessionTimestamp = DateTime.tryParse(widget.sessionTime.replaceAll(' ', 'T'));
     if (qrTimestamp == null || sessionTimestamp == null) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -573,9 +573,9 @@ class _AttendancePageState extends State<AttendancePage> {
       return;
     }
 
-    // Check that the QR code timestamp is after (or equal to) the session start time.
+    // Check that the QR code timestamp is >= the session start time.
     if (qrTimestamp.isBefore(sessionTimestamp)) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -596,7 +596,7 @@ class _AttendancePageState extends State<AttendancePage> {
       _logger.info(
           "Teacher location: lat: ${teacherPosition.latitude}, long: ${teacherPosition.longitude}");
     } catch (e) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -609,14 +609,15 @@ class _AttendancePageState extends State<AttendancePage> {
       );
       return;
     }
+
     final teacherLat = teacherPosition.latitude;
     final teacherLong = teacherPosition.longitude;
     final distance =
         calculateDistance(teacherLat, teacherLong, studentLat, studentLong);
 
-    // Distance adjustment in meters
+    // Distance check in meters
     if (distance > 100) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -631,10 +632,10 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     // Look up the student using a case‑insensitive roll number match.
-    final idx = students
-        .indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
+    final idx =
+        students.indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
     if (idx == -1) {
-      HapticFeedback.vibrate();
+      await _vibrate(400);
       await _playSound('error.mp3');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -651,7 +652,9 @@ class _AttendancePageState extends State<AttendancePage> {
     setState(() {
       students[idx].status = AttendanceStatus.present;
     });
-    HapticFeedback.heavyImpact();
+
+    // Stronger vibration for success
+    await _vibrate(200);
     await _playSound('success.mp3');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -684,6 +687,7 @@ class _AttendancePageState extends State<AttendancePage> {
         students.where((s) => s.status == AttendanceStatus.notMarked).length;
     final allPresent = students.isNotEmpty &&
         students.every((s) => s.status == AttendanceStatus.present);
+
     return AttendanceHeader(
       presentCount: presentCount,
       absentCount: absentCount,
@@ -773,18 +777,18 @@ class _AttendancePageState extends State<AttendancePage> {
       padding: const EdgeInsets.all(16),
       color: Colors.white,
       child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 8),
-        SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          style: buttonStyle,
-          onPressed: _handleSubmitButtonPressed,
-          child: const Text('Save Attendance'),
-        ),
-        ),
-      ],
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: buttonStyle,
+              onPressed: _handleSubmitButtonPressed,
+              child: const Text('Save Attendance'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -842,13 +846,19 @@ class _AttendancePageState extends State<AttendancePage> {
                   Container(
                     width: double.infinity,
                     color: AppColors.primaryColor,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 16,
+                    ),
                     child: Center(
                       child: Text(
-                        '${widget.semester} ${widget.academicYear} | ${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} | Class ${widget.classNumber}',
+                        '${widget.semester} ${widget.academicYear} | '
+                        '${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} '
+                        '| Class ${widget.classNumber}',
                         style: const TextStyle(
-                            color: Colors.white70, fontSize: 14),
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
