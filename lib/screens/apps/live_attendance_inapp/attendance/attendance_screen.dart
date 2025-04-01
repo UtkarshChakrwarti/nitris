@@ -121,26 +121,26 @@ class _AttendancePageState extends State<AttendancePage> {
 
 //prodmode
 
-  // @override
-  // void reassemble() {
-  //   super.reassemble();
-  //   try {
-  //     if (Platform.isAndroid) _qrController?.pauseCamera();
-  //     _qrController?.resumeCamera();
-  //   } catch (e) {
-  //     _logger.warning('Camera reassemble error: $e');
-  //   }
-  // }
-
-  //debug mode
   @override
   void reassemble() {
     super.reassemble();
-    // On Android, just resume the camera during reassemble.
-    if (Platform.isAndroid) {
+    try {
+      if (Platform.isAndroid) _qrController?.pauseCamera();
       _qrController?.resumeCamera();
+    } catch (e) {
+      _logger.warning('Camera reassemble error: $e');
     }
   }
+
+  // //debug mode
+  // @override
+  // void reassemble() {
+  //   super.reassemble();
+  //   // On Android, just resume the camera during reassemble.
+  //   if (Platform.isAndroid) {
+  //     _qrController?.resumeCamera();
+  //   }
+  // }
 
   String _getMonthName(int month) =>
       (month >= 1 && month <= 12) ? _monthNames[month - 1] : 'Invalid';
