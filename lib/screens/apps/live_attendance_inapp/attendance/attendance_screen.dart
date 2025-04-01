@@ -43,6 +43,7 @@ class AttendancePage extends StatefulWidget {
   final Subject subject;
   final String semester;
   final String currentYear;
+  final String academicYear;
   final int classNumber;
   final int sectionId;
   final String sessionTime; // session start time in IST format
@@ -54,6 +55,7 @@ class AttendancePage extends StatefulWidget {
     required this.subject,
     required this.semester,
     required this.currentYear,
+    required this.academicYear,
     required this.classNumber,
     required this.sectionId,
     required this.sessionTime,
@@ -844,7 +846,7 @@ class _AttendancePageState extends State<AttendancePage> {
                         const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: Center(
                       child: Text(
-                        '${widget.semester} ${widget.currentYear} | ${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} | Class ${widget.classNumber}',
+                        '${widget.semester} ${widget.academicYear} | ${widget.date}-${_getMonthName(widget.month)}-${widget.currentYear} | Class ${widget.classNumber}',
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 14),
                       ),

@@ -185,6 +185,7 @@ class _ClassSelectionSheetState extends State<ClassSelectionSheet> {
                                 classNumber: classNumber,
                                 semester: widget.subject.session,
                                 currentYear: currentYear,
+                                academicYear: widget.subject.academicYear,
                                 sectionId: widget.subject.sectionId,
                                 date: dayInt,
                                 month: monthInt,
