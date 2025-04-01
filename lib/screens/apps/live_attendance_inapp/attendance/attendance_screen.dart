@@ -119,26 +119,26 @@ class _AttendancePageState extends State<AttendancePage> {
 
 //prodmode
 
-  @override
-  void reassemble() {
-    super.reassemble();
-    try {
-      if (Platform.isAndroid) _qrController?.pauseCamera();
-      _qrController?.resumeCamera();
-    } catch (e) {
-      _logger.warning('Camera reassemble error: $e');
-    }
-  }
-
-  //debug mode
   // @override
   // void reassemble() {
   //   super.reassemble();
-  //   // On Android, just resume the camera during reassemble.
-  //   if (Platform.isAndroid) {
+  //   try {
+  //     if (Platform.isAndroid) _qrController?.pauseCamera();
   //     _qrController?.resumeCamera();
+  //   } catch (e) {
+  //     _logger.warning('Camera reassemble error: $e');
   //   }
   // }
+
+  //debug mode
+  @override
+  void reassemble() {
+    super.reassemble();
+    // On Android, just resume the camera during reassemble.
+    if (Platform.isAndroid) {
+      _qrController?.resumeCamera();
+    }
+  }
 
   String _getMonthName(int month) =>
       (month >= 1 && month <= 12) ? _monthNames[month - 1] : 'Invalid';
@@ -245,37 +245,36 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   Future<void> _handleSubmitButtonPressed() async {
-    if (_isManualMode) {
-      // In manual mode, do not allow submission if any student is unmarked.
-      if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
-        DialogsAndPrompts.showFailureDialog(
-          context,
-          'Please mark all students (none can be "unmarked") before submitting.',
-        );
-        return;
-      }
-    } else {
-      // In QR mode, if there are any unmarked students, warn the teacher.
-      if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
-        final confirm = await DialogsAndPrompts.showSuccessDialog(
-          context,
-          'Some students are unmarked. If you continue, they will be marked as absent. Do you want to continue?',
-        );
-        if (confirm != true) return;
-        // Mark all unmarked students as absent
-        setState(() {
-          for (var student in students) {
-            if (student.status == AttendanceStatus.notMarked) {
-              student.status = AttendanceStatus.absent;
-            }
+    // if (_isManualMode) {
+    //   // In manual mode, do not allow submission if any student is unmarked.
+    //   if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
+    //     DialogsAndPrompts.showFailureDialog(
+    //       context,
+    //       'Please mark all students (none can be "unmarked") before submitting.',
+    //     );
+    //     return;
+    //   }
+    // } else {
+    // In QR mode, if there are any unmarked students, warn the teacher.
+    if (students.any((s) => s.status == AttendanceStatus.notMarked)) {
+      final confirm = await DialogsAndPrompts.showConfirmReturnDialog(context);
+      if (confirm != true) return;
+      // Mark all unmarked students as absent
+      setState(() {
+        for (var student in students) {
+          if (student.status == AttendanceStatus.notMarked) {
+            student.status = AttendanceStatus.absent;
           }
-        });
-      }
+        }
+      });
+      if (confirm == true) await _handleSubmitAttendance();
+      
     }
+    // }
 
-    final confirm =
-        await DialogsAndPrompts.showConfirmSubmissionDialog(context) ?? false;
-    if (confirm) await _handleSubmitAttendance();
+    // final confirm =
+    //     await DialogsAndPrompts.showConfirmSubmissionDialog(context) ?? false;
+    
   }
 
   Future<void> _handleSelectAll(bool value) async {
@@ -768,43 +767,24 @@ class _AttendancePageState extends State<AttendancePage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
-    if (!_isManualMode) {
-      // QR mode: Save button always active.
-      return Container(
-        padding: const EdgeInsets.all(16),
-        color: Colors.white,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: buttonStyle,
-                onPressed: _handleSubmitButtonPressed,
-                child: const Text('Save Attendance'),
-              ),
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: Colors.white,
+      child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 8),
+        SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          style: buttonStyle,
+          onPressed: _handleSubmitButtonPressed,
+          child: const Text('Save Attendance'),
         ),
-      );
-    } else {
-      // Manual mode: disable save if any student is unmarked.
-      final bool disableSave =
-          students.any((s) => s.status == AttendanceStatus.notMarked);
-      return Container(
-        padding: const EdgeInsets.all(16),
-        color: Colors.white,
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: buttonStyle,
-            onPressed: disableSave ? null : _handleSubmitButtonPressed,
-            child: const Text('Save Attendance'),
-          ),
         ),
-      );
-    }
+      ],
+      ),
+    );
   }
 
   @override

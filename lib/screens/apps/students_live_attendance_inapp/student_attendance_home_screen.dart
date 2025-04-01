@@ -69,7 +69,7 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
       final apiService = ApiService();
       final sessionResponse = await apiService.checkSessionStatus(subject.sectionId);
       if (sessionResponse["status"] != "ACTIVE" || sessionResponse["location"] == null) {
-        _showErrorSnackBar("Session hasn't started yet. Please wait until the class is active.");
+        _showErrorSnackBar("Faculty has not started taking attendance yet. Please wait until faculty starts taking attendance.");
         return;
       }
       final currentPosition = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
@@ -105,57 +105,60 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
   }
 
   PreferredSizeWidget _buildCustomAppBar() {
+    // Get screen width to make responsive decisions
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360; // Threshold for small screens
+    
     return AppBar(
       backgroundColor: AppColors.primaryColor,
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white),
+        padding: EdgeInsets.zero,
         onPressed: () => Navigator.pop(context),
       ),
-      title: const Text('My Attendance', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      actions: [
-       IconButton(
-        icon: const Icon(Icons.calendar_today, color: Colors.white),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MyAttendancePage()),
-          );
-        },
+      titleSpacing: 0,
+      title: Text(
+        'My Attendance', 
+        style: TextStyle(
+          color: Colors.white, 
+          fontWeight: FontWeight.bold,
+          fontSize: isSmallScreen ? 18 : 20,
+        ),
+        overflow: TextOverflow.ellipsis,
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh, color: Colors.white),
+          onPressed: _loadData,
+          tooltip: 'Update',
+        ),
+        IconButton(
+          icon: const Icon(Icons.calendar_today, color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MyAttendancePage()),
+            );
+          },
+          tooltip: 'View Attendance',
+        ),
       ],
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(120),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (_loginResponse != null) StudentProfileWidget(student: _loginResponse!),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                icon: Icon(Icons.refresh, color: AppColors.primaryColor),
-                label: Text('Update', style: TextStyle(color: AppColors.primaryColor)),
-                onPressed: _loadData,
-              ),
-            )
-          ]),
+        preferredSize: const Size.fromHeight(80),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: _loginResponse != null 
+            ? StudentProfileWidget(student: _loginResponse!)
+            : const SizedBox.shrink(),
         ),
       ),
     );
   }
-    Widget _buildSubjectsList() {
-    final subjectsWithLectures = _subjects.where((subject) {
-      if (subject.ltp.isEmpty) return false;
-      final parts = subject.ltp.split('-');
-      if (parts.isEmpty) return false;
-      final lectureCount = int.tryParse(parts[0]) ?? 0;
-      return lectureCount != 0;
-    }).toList();
 
+  Widget _buildSubjectsList() {
+    final subjectsWithLectures = _subjects;
     if (subjectsWithLectures.isEmpty) {
       return Center(
         child: Column(
@@ -186,7 +189,6 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: InkWell(
               onTap: () => _handleSubjectTap(subject, index),
-              // Instead of changing the background, we define a subtle overlay color.
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
               overlayColor: MaterialStateProperty.all(Colors.grey.withOpacity(0.1)),

@@ -232,7 +232,7 @@ class ApiService {
     }
   }
 
-  //check session status
+  // Check session status
   Future<Map<String, String>> checkSessionStatus(int sectionId) async {
     final Uri url =
         Uri.parse('$baseUrlPresentsir/Session/checkstatus/$sectionId');
@@ -241,9 +241,24 @@ class ApiService {
     if (response.statusCode == 200) {
       final result = await response.stream.bytesToString();
       final Map<String, dynamic> jsonData = jsonDecode(result);
+
+      // Safely extract the status and location values.
+      // If either value is null or empty, default to 'closed'.
+      String status =
+          jsonData['status'] is String ? jsonData['status'] as String : '';
+      String location =
+          jsonData['location'] is String ? jsonData['location'] as String : '';
+
+      if (status.isEmpty) {
+        status = 'closed';
+      }
+      if (location.isEmpty) {
+        location = 'closed';
+      }
+
       return {
-        'status': jsonData['status'] as String,
-        'location': jsonData['location'] as String,
+        'status': status,
+        'location': location,
       };
     } else {
       _logger
