@@ -6,8 +6,8 @@ import 'package:logging/logging.dart';
 final logger = Logger('Application');
 
 class Application {
-  final String icon;     // Image asset path
-  final String label;    // Main label for the application
+  final String icon; // Image asset path
+  final String label; // Main label for the application
   final String subtitle; // Subtitle for the application (optional)
   final Color color;
 
@@ -36,6 +36,12 @@ Future<List<Application>> getApplications() async {
         subtitle: ' Attendance',
         color: AppColors.primaryColor,
       ),
+      const Application(
+        icon: 'assets/images/biometric.png', // You might need to add this asset
+        label: 'Biometric',
+        subtitle: ' Attendance',
+        color: AppColors.primaryColor,
+      ),
     ];
   } else {
     // log add
@@ -48,9 +54,16 @@ Future<List<Application>> getApplications() async {
         color: AppColors.primaryColor,
       ),
       const Application(
-        icon: 'assets/images/hello-nitr.png', // Ensure this asset path is valid.
+        icon:
+            'assets/images/hello-nitr.png', // Ensure this asset path is valid.
         label: 'Hello',
         subtitle: 'NITR',
+        color: AppColors.primaryColor,
+      ),
+      const Application(
+        icon: 'assets/images/biometric.png', // You might need to add this asset
+        label: 'Biometric',
+        subtitle: ' Attendance',
         color: AppColors.primaryColor,
       ),
     ];

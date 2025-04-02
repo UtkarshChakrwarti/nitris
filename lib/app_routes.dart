@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nitris/core/exception/custom_error.dart';
+import 'package:nitris/screens/apps/biometric_inapp/biometric_dashboard.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/update/contacts_update_screen.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/main_screen/home_screen.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/live_attendance_home/attendance_home_screen.dart';
@@ -12,7 +13,6 @@ import 'package:nitris/screens/pin/verify/pin_unlock_screen.dart';
 import 'package:nitris/screens/privacy_policy/privacy_policy_screen.dart';
 import 'package:nitris/screens/sim/sim_selection_screen.dart';
 import 'package:nitris/screens/splash/splash_screen.dart';
-
 
 final Map<String, WidgetBuilder> appRoutes = {
   // Splash Screen
@@ -29,7 +29,6 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   //OTP Verification Screen
   '/otp': (context) => const OtpVerificationScreen(mobileNumber: ''),
-
 
   //Pin Creation Screen
   '/pinCreation': (context) => const PinCreationScreen(),
@@ -51,6 +50,9 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // students Attendance Screen
   '/studentAttendance': (context) => const StudentAttendanceHomeScreen(),
+
+  // Biometric Attendance Screen
+  '/biometricAttendance': (context) => const BiometricAttendancePage(),
 
   //Custom error page
   '/error': (context) => CustomError(
