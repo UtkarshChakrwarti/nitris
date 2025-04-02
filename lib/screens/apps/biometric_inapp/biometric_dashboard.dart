@@ -101,7 +101,7 @@ class _BiometricAttendancePageState extends State<BiometricAttendancePage> with 
                 const SizedBox(height: 16),
                 // Description
                 Text(
-                  "We're working on an advanced biometric attendance system to make tracking attendance easier and more secure.",
+                  "We're working on an advanced biometric attendance system.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey[700],

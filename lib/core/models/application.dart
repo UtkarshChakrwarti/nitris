@@ -54,16 +54,16 @@ Future<List<Application>> getApplications() async {
         color: AppColors.primaryColor,
       ),
       const Application(
+        icon: 'assets/images/biometric.png', // You might need to add this asset
+        label: 'Biometric',
+        subtitle: ' Attendance',
+        color: AppColors.primaryColor,
+      ),
+      const Application(
         icon:
             'assets/images/hello-nitr.png', // Ensure this asset path is valid.
         label: 'Hello',
         subtitle: 'NITR',
-        color: AppColors.primaryColor,
-      ),
-      const Application(
-        icon: 'assets/images/biometric.png', // You might need to add this asset
-        label: 'Biometric',
-        subtitle: ' Attendance',
         color: AppColors.primaryColor,
       ),
     ];
