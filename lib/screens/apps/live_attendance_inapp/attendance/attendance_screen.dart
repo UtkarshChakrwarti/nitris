@@ -165,10 +165,11 @@ class _AttendancePageState extends State<AttendancePage> {
     } catch (e, st) {
       _logger.severe('Error fetching students: $e', e, st);
       // Vibrate + play error sound
-      await _vibrate(400); 
+      await _vibrate(400);
       await _playSound('error.mp3');
       setState(() => _isLoading = false);
-      DialogsAndPrompts.showFailureDialog(context, 'Failed to load students: $e');
+      DialogsAndPrompts.showFailureDialog(
+          context, 'Failed to load students: $e');
     }
   }
 
@@ -185,7 +186,8 @@ class _AttendancePageState extends State<AttendancePage> {
         await _apiService.endLiveSession(widget.sectionId.toString());
         _logger.info("Active session terminated successfully.");
       } catch (e) {
-        _logger.severe("Error terminating active session on back navigation: $e");
+        _logger
+            .severe("Error terminating active session on back navigation: $e");
       }
     }
     return shouldPop;
@@ -213,7 +215,8 @@ class _AttendancePageState extends State<AttendancePage> {
           .map((student) => {
                 'attendanceId': student.attendanceId,
                 'id': student.id,
-                'status': (student.status == AttendanceStatus.present) ? 'G' : 'R',
+                'status':
+                    (student.status == AttendanceStatus.present) ? 'G' : 'R',
               })
           .toList();
 
@@ -239,14 +242,16 @@ class _AttendancePageState extends State<AttendancePage> {
       );
 
       if (success == true) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/attendanceHome', (r) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/attendanceHome', (r) => false);
       }
     } catch (e, st) {
       _logger.severe('Error submitting attendance: $e', e, st);
       // Vibrate + error sound
       await _vibrate(400);
       await _playSound('error.mp3');
-      DialogsAndPrompts.showFailureDialog(context, 'Failed to save attendance: $e');
+      DialogsAndPrompts.showFailureDialog(
+          context, 'Failed to save attendance: $e');
     }
   }
 
@@ -266,6 +271,10 @@ class _AttendancePageState extends State<AttendancePage> {
       if (confirm == true) await _handleSubmitAttendance();
     } else {
       // If no unmarked students, just submit.
+      // ask for confirmation before submitting
+      final confirm = await DialogsAndPrompts.showConfirmSubmissionDialog(context);
+      if (confirm != true) return;
+      // Submit attendance
       await _handleSubmitAttendance();
     }
   }
@@ -310,7 +319,8 @@ class _AttendancePageState extends State<AttendancePage> {
           ),
           actions: [
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
+              style:
+                  TextButton.styleFrom(foregroundColor: AppColors.primaryColor),
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('OK'),
             ),
@@ -324,7 +334,8 @@ class _AttendancePageState extends State<AttendancePage> {
       context: context,
       builder: (ctx) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: StatefulBuilder(
             builder: (ctx, setStateDialog) {
               final localStudents = students.where(filter).toList();
@@ -367,7 +378,8 @@ class _AttendancePageState extends State<AttendancePage> {
                         itemCount: localStudents.length,
                         itemBuilder: (context, i) {
                           final student = localStudents[i];
-                          final idx = students.indexWhere((s) => s.id == student.id);
+                          final idx =
+                              students.indexWhere((s) => s.id == student.id);
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
@@ -476,7 +488,8 @@ class _AttendancePageState extends State<AttendancePage> {
     if (permission == LocationPermission.deniedForever) {
       throw Exception('Location permissions are permanently denied.');
     }
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
   }
 
   /// Updated QR code scanned handler.
@@ -557,7 +570,8 @@ class _AttendancePageState extends State<AttendancePage> {
 
     // Convert the QR timestamp and sessionTime to DateTime objects.
     final qrTimestamp = DateTime.tryParse(qrTimestampStr.replaceAll(' ', 'T'));
-    final sessionTimestamp = DateTime.tryParse(widget.sessionTime.replaceAll(' ', 'T'));
+    final sessionTimestamp =
+        DateTime.tryParse(widget.sessionTime.replaceAll(' ', 'T'));
     if (qrTimestamp == null || sessionTimestamp == null) {
       await _vibrate(400);
       await _playSound('error.mp3');
@@ -632,8 +646,8 @@ class _AttendancePageState extends State<AttendancePage> {
     }
 
     // Look up the student using a case‑insensitive roll number match.
-    final idx =
-        students.indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
+    final idx = students
+        .indexWhere((s) => s.rollNo.toLowerCase() == rollNo.toLowerCase());
     if (idx == -1) {
       await _vibrate(400);
       await _playSound('error.mp3');
@@ -642,6 +656,23 @@ class _AttendancePageState extends State<AttendancePage> {
           backgroundColor: Colors.red[700],
           content: Text(
             'No student found with rollNo: $rollNo',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Check if the student is already marked as present.
+    if (students[idx].status == AttendanceStatus.present) {
+      // Stronger vibration for success
+      await _vibrate(300);
+      await _playSound('error.mp3');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.orange[700],
+          content: Text(
+            '${students[idx].name} is already marked present.',
             style: const TextStyle(color: Colors.white),
           ),
         ),
@@ -667,14 +698,36 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
+  bool _isProcessing =
+      false; // Add this variable in your _AttendancePageState class.
+
   void _onQRViewCreated(QRViewController controller) {
     _qrController = controller;
-    controller.scannedDataStream.listen((scanData) {
+    controller.scannedDataStream.listen((scanData) async {
       final code = scanData.code ?? '';
-      if (code.isNotEmpty && code != _lastScannedCode) {
+      if (code.isEmpty) return;
+
+      // If we're already processing a scan, simply ignore new ones.
+      if (_isProcessing) return;
+
+      _isProcessing = true;
+
+      // If the scanned code is the same as the last processed one, ignore it silently.
+      if (code == _lastScannedCode) {
+        _isProcessing = false;
+        return;
+      } else {
         _lastScannedCode = code;
-        _handleScannedCode(code);
       }
+
+      // Process the scanned code.
+      await _handleScannedCode(code);
+
+      // After processing, wait for a short period to prevent duplicate processing.
+      Future.delayed(Duration(seconds: 2), () {
+        _isProcessing = false;
+        _lastScannedCode = '';
+      });
     });
   }
 
