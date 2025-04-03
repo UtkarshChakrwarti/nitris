@@ -8,6 +8,7 @@ import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:no_screenshot/no_screenshot.dart'; 
 
 /// Simple XOR encryption helper.
 String simpleXorEncrypt(String plainText, String key) {
@@ -54,6 +55,9 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   @override
   void initState() {
     super.initState();
+    // Disable screenshots for this page (Android only)
+    _disableScreenshots();
+
     // Lock orientation to portrait mode.
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _initializeAnimation();
@@ -61,8 +65,15 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     _fetchData();
   }
 
+  /// Disables screenshot capture on Android using no_screenshot plugin.
+  Future<void> _disableScreenshots() async {
+    await NoScreenshot.instance.screenshotOff();
+  }
+
   @override
   void dispose() {
+    // Re-enable screenshots when leaving this screen.
+    NoScreenshot.instance.screenshotOn();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _animationController.dispose();
     super.dispose();
@@ -102,8 +113,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     }
   }
 
-  String generateQRData(
-      String empCode, String lat, String long, String timestamp, String sectionId) {
+  String generateQRData(String empCode, String lat, String long, String timestamp, String sectionId) {
     final plainData = '$empCode|$long|$lat|$timestamp|$sectionId';
     return encryptQRData(plainData);
   }
@@ -198,7 +208,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
           children: [
             Icon(Icons.error_outline, color: AppColors.darkRed, size: 50),
             const SizedBox(height: 10),
-            Text(
+            const Text(
               'QR Generation Failed',
               style: TextStyle(
                 color: AppColors.darkRed,
@@ -223,8 +233,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 'Go Back',
@@ -338,12 +347,12 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
               color: AppColors.primaryColor.withOpacity(0.08),
               borderRadius: BorderRadius.circular(30),
             ),
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.qr_code_scanner_rounded,
                     color: AppColors.primaryColor, size: 18),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text(
                   "Scan to Register Attendance",
                   style: TextStyle(
@@ -433,8 +442,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       ),
       child: const Text(
         'Done',
-        style:
-            TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
       ),
     );
   }
