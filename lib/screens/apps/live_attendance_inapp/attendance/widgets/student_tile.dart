@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:nitris/core/constants/app_colors.dart';
+import 'package:nitris/core/enums/attendance_status.dart' show AttendanceStatus;
 import 'package:nitris/core/models/student.dart';
 
 class StudentTile extends StatelessWidget {

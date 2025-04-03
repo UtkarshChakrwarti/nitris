@@ -138,7 +138,7 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const MyAttendancePage()),
+              MaterialPageRoute(builder: (context) => const AttendancePage()),
             );
           },
           tooltip: 'View Attendance',
