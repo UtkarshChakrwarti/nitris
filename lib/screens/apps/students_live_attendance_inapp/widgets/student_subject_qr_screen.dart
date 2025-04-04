@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For SystemChrome
 import 'package:nitris/core/services/local/local_storage_service.dart';
@@ -8,7 +9,8 @@ import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'package:no_screenshot/no_screenshot.dart'; 
+import 'package:no_screenshot/no_screenshot.dart';
+import 'package:detect_fake_location/detect_fake_location.dart';
 
 /// Simple XOR encryption helper.
 String simpleXorEncrypt(String plainText, String key) {
@@ -63,6 +65,39 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     _initializeAnimation();
     _formatAttendanceDate();
     _fetchData();
+    _checkFakeLocation();
+  }
+  Future<void> _checkFakeLocation() async {
+    bool isFake = await DetectFakeLocation().detectFakeLocation();
+    if (isFake) {
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Fake Location Detected'),
+          content: const Text(
+              'Your location appears to be faked. Please use a valid location to proceed.'),
+          actions: [
+            ElevatedButton(
+              onPressed: () => exit(0),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: const Text(
+                'OK',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   /// Disables screenshot capture on Android using no_screenshot plugin.
@@ -113,7 +148,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     }
   }
 
-  String generateQRData(String empCode, String lat, String long, String timestamp, String sectionId) {
+  String generateQRData(String empCode, String lat, String long,
+      String timestamp, String sectionId) {
     final plainData = '$empCode|$long|$lat|$timestamp|$sectionId';
     return encryptQRData(plainData);
   }
@@ -233,7 +269,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 'Go Back',
@@ -311,8 +348,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
           ),
           const SizedBox(height: 1),
           Text(value,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.bold)),
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -384,11 +421,14 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       ),
       child: Column(
         children: [
-          _buildDetailRow(Icons.access_time_outlined, 'Date & Time', _localDateString),
+          _buildDetailRow(
+              Icons.access_time_outlined, 'Date & Time', _localDateString),
           const Divider(height: 16),
-          _buildDetailRow(Icons.class_, 'Student Details', 'Roll No: $_empCode\nName: $_empName'),
+          _buildDetailRow(Icons.class_, 'Student Details',
+              'Roll No: $_empCode\nName: $_empName'),
           const Divider(height: 16),
-          _buildDetailRow(Icons.location_on_outlined, 'Location', '$lat, $long'),
+          _buildDetailRow(
+              Icons.location_on_outlined, 'Location', '$lat, $long'),
         ],
       ),
     );
@@ -442,7 +482,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       ),
       child: const Text(
         'Done',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+        style: TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
       ),
     );
   }
