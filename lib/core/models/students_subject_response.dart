@@ -1,4 +1,4 @@
-import 'subject.dart';
+import 'package:nitris/core/models/subject.dart';
 
 class StudentSubjectResponse {
   final String status;
@@ -15,6 +15,14 @@ class StudentSubjectResponse {
     var dataJson = json['data'] as List<dynamic>? ?? [];
     List<Subject> subjectsList =
         dataJson.map((subject) => Subject.fromJson(subject)).toList();
+
+    // Sort the subjects so that 'Theory' comes before 'Practical'
+    subjectsList.sort((a, b) {
+      if (a.subjectNature == b.subjectNature) {
+        return 0;
+      }
+      return a.subjectNature == "Theory" ? -1 : 1;
+    });
 
     return StudentSubjectResponse(
       status: json['status'] ?? 'Unknown',

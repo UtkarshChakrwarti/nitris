@@ -11,6 +11,7 @@ class AttendanceData {
   final int totalClass;
   final int totalPresent;
   final int totalAbsent;
+  final int totalLeave;
   final List<AttendanceDay> attendanceDays;
 
   AttendanceData({
@@ -23,18 +24,23 @@ class AttendanceData {
     required this.totalClass,
     required this.totalPresent,
     required this.totalAbsent,
+    required this.totalLeave,
     required this.attendanceDays,
   });
 
   factory AttendanceData.fromJson(Map<String, dynamic> json) {
     List<AttendanceDay> days = [];
+    // Loop through the expected 20 attendance entries
     for (int i = 1; i <= 20; i++) {
       final dateKey = 'c${i}Date';
       final statusKey = 'c$i';
-      if (json[dateKey] != null && json[dateKey].toString().isNotEmpty) {
-        int dayNum = int.tryParse(json[dateKey].toString()) ?? 0;
-        if (dayNum > 0) {
-          String code = json[statusKey] ?? "";
+      // Check if the date field exists and is not empty
+      if (json[dateKey] != null && json[dateKey].toString().trim().isNotEmpty) {
+        // Try parsing the date value to an int; default to 0 if parsing fails
+        int? dayNum = int.tryParse(json[dateKey].toString());
+        if (dayNum != null && dayNum > 0) {
+          // Safely get the status code from JSON and default to an empty string if null
+          String code = json[statusKey]?.toString() ?? "";
           AttendanceStatus status;
           switch (code) {
             case "G":
@@ -60,16 +66,29 @@ class AttendanceData {
         }
       }
     }
+
+    // Compute total leave count based on the attendanceDays list
+    int leaveCount = days.where((day) => day.status == AttendanceStatus.leave).length;
+
     return AttendanceData(
-      rollNo: json['rollNo'] ?? "",
-      name: json['name'] ?? "",
-      month: json['month'] ?? "",
-      subjectCode: json['subjectCode'] ?? "",
-      subjectName: json['subjectName'] ?? "",
-      year: json['year'] is int ? json['year'] : int.tryParse(json['year'].toString()) ?? 0,
-      totalClass: json['totalClass'] is int ? json['totalClass'] : int.tryParse(json['totalClass'].toString()) ?? 0,
-      totalPresent: json['totalPresent'] is int ? json['totalPresent'] : int.tryParse(json['totalPresent'].toString()) ?? 0,
-      totalAbsent: json['totalAbsent'] is int ? json['totalAbsent'] : int.tryParse(json['totalAbsent'].toString()) ?? 0,
+      rollNo: json['rollNo']?.toString() ?? "",
+      name: json['name']?.toString() ?? "",
+      month: json['month']?.toString() ?? "",
+      subjectCode: json['subjectCode']?.toString() ?? "",
+      subjectName: json['subjectName']?.toString() ?? "",
+      year: json['year'] is int
+          ? json['year']
+          : int.tryParse(json['year']?.toString() ?? "") ?? 0,
+      totalClass: json['totalClass'] is int
+          ? json['totalClass']
+          : int.tryParse(json['totalClass']?.toString() ?? "") ?? 0,
+      totalPresent: json['totalPresent'] is int
+          ? json['totalPresent']
+          : int.tryParse(json['totalPresent']?.toString() ?? "") ?? 0,
+      totalAbsent: json['totalAbsent'] is int
+          ? json['totalAbsent']
+          : int.tryParse(json['totalAbsent']?.toString() ?? "") ?? 0,
+      totalLeave: leaveCount,
       attendanceDays: days,
     );
   }

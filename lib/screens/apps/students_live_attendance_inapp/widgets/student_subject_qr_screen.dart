@@ -45,7 +45,10 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   String? _empCode;
   String _empName = '';
   bool _allowPop = false;
-  bool _didCheckFakeLocation = false; // To ensure we run the check only once
+
+  // Flag to indicate a mock (fake) location.
+  bool _isMockLocation = false;
+  bool _didCheckFakeLocation = false; // To ensure the check runs only once.
 
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -65,7 +68,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     _initializeAnimation();
     _formatAttendanceDate();
     _fetchData();
-    // Removed _checkFakeLocation() call from here.
+    // Removed _checkFakeLocation from initState
   }
 
   @override
@@ -78,11 +81,16 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   }
 
   Future<void> _checkFakeLocation() async {
-    // Only perform fake location check on Android.
+    // Only perform the fake location check on Android.
     if (Platform.isAndroid) {
-      // Using geolocator's Position.isMocked to detect mock locations.
+      // Use geolocator's Position.isMocked to detect mock locations.
       if (widget.currentPosition.isMocked) {
         if (!mounted) return;
+        // Set flag so that the QR code won't be generated.
+        setState(() {
+          _isMockLocation = true;
+        });
+
         // Schedule showing the dialog after the current frame.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           showDialog(
@@ -100,11 +108,13 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   child: const Text(
                     'OK',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -201,6 +211,24 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   }
 
   Widget _buildBody(String sectionId, String generatedTime) {
+    // If a fake location is detected, display a message and don't generate the QR.
+    if (_isMockLocation) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text(
+            'Fake location detected. QR code generation has been disabled.\nPlease use a valid location to register your attendance.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.darkRed,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_isLoading) return _buildLoadingScreen();
     if (_error != null) return _buildErrorScreen(_error!);
 
@@ -284,7 +312,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 'Go Back',
