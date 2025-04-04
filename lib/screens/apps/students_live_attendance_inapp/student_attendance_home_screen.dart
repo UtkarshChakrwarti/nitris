@@ -15,10 +15,12 @@ class StudentAttendanceHomeScreen extends StatefulWidget {
   const StudentAttendanceHomeScreen({Key? key}) : super(key: key);
 
   @override
-  State<StudentAttendanceHomeScreen> createState() => _StudentAttendanceHomeScreenState();
+  State<StudentAttendanceHomeScreen> createState() =>
+      _StudentAttendanceHomeScreenState();
 }
 
-class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScreen> {
+class _StudentAttendanceHomeScreenState
+    extends State<StudentAttendanceHomeScreen> {
   LoginResponse? _loginResponse;
   List<Subject> _subjects = [];
   bool _isDataLoading = false;
@@ -42,7 +44,8 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
         throw Exception("Login details not found. Please log in again.");
       }
       final apiService = ApiService();
-      final subjectResponse = await apiService.getStudentSubjects(loginResponse.empCode!);
+      final subjectResponse =
+          await apiService.getStudentSubjects(loginResponse.empCode!);
       setState(() {
         _loginResponse = loginResponse;
         _subjects = subjectResponse.data;
@@ -67,14 +70,19 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
     setState(() => _loadingSubjectIndex = index);
     try {
       final apiService = ApiService();
-      final sessionResponse = await apiService.checkSessionStatus(subject.sectionId);
-      if (sessionResponse["status"] != "ACTIVE" || sessionResponse["location"] == null) {
-        _showErrorSnackBar("Faculty has not started taking attendance yet. Please wait until faculty starts taking attendance.");
+      final sessionResponse =
+          await apiService.checkSessionStatus(subject.sectionId);
+      if (sessionResponse["status"] != "ACTIVE" ||
+          sessionResponse["location"] == null) {
+        _showErrorSnackBar(
+            "Faculty has not started taking attendance yet. Please wait until faculty starts taking attendance.");
         return;
       }
-      final currentPosition = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
       final sessionLocation = sessionResponse["location"]!.split('|');
-      if (sessionLocation.length < 2) throw Exception("Invalid session location data.");
+      if (sessionLocation.length < 2)
+        throw Exception("Invalid session location data.");
       final sessionLat = double.parse(sessionLocation[0]);
       final sessionLng = double.parse(sessionLocation[1]);
       final distance = Geolocator.distanceBetween(
@@ -85,17 +93,21 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
       );
       //log distance
       print("Distance from classroom: ${distance.toStringAsFixed(2)} meters");
-      
-      // if (distance >= 10000) {      //for simulation 
+
+      // if (distance >= 10000) {      //for simulation
       if (distance <= 100) {
         final attendanceDate = DateTime.now().toIso8601String();
-        Navigator.push(context, MaterialPageRoute(builder: (context) => StudentSubjectQrScreen(
-          subject: subject,
-          attendanceDate: attendanceDate,
-          currentPosition: currentPosition,
-        )));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => StudentSubjectQrScreen(
+                      subject: subject,
+                      attendanceDate: attendanceDate,
+                      currentPosition: currentPosition,
+                    )));
       } else {
-        _showErrorSnackBar("Attendance QR generation not allowed: Please ensure you are within the designated classroom location.");
+        _showErrorSnackBar(
+            "Attendance QR generation not allowed: Please ensure you are within the designated classroom location.");
       }
     } catch (error) {
       _showErrorSnackBar(error.toString());
@@ -108,7 +120,7 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
     // Get screen width to make responsive decisions
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360; // Threshold for small screens
-    
+
     return AppBar(
       backgroundColor: AppColors.primaryColor,
       elevation: 0,
@@ -119,9 +131,9 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
       ),
       titleSpacing: 0,
       title: Text(
-        'My Attendance', 
+        'My Attendance',
         style: TextStyle(
-          color: Colors.white, 
+          color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: isSmallScreen ? 18 : 20,
         ),
@@ -134,7 +146,11 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
           tooltip: 'Update',
         ),
         IconButton(
-          icon: const Icon(Icons.calendar_today, color: Colors.white),
+          icon: Image.asset(
+                      'assets/images/cal.png',
+                      width: 40,
+                      height: 40,
+                    ),
           onPressed: () {
             Navigator.push(
               context,
@@ -149,9 +165,9 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: _loginResponse != null 
-            ? StudentProfileWidget(student: _loginResponse!)
-            : const SizedBox.shrink(),
+          child: _loginResponse != null
+              ? StudentProfileWidget(student: _loginResponse!)
+              : const SizedBox.shrink(),
         ),
       ),
     );
@@ -168,7 +184,10 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
             const SizedBox(height: 16),
             Text(
               'No subjects available',
-              style: TextStyle(color: AppColors.textColor, fontSize: 16, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  color: AppColors.textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -191,7 +210,8 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
               onTap: () => _handleSubjectTap(subject, index),
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
-              overlayColor: MaterialStateProperty.all(Colors.grey.withOpacity(0.1)),
+              overlayColor:
+                  MaterialStateProperty.all(Colors.grey.withOpacity(0.1)),
               child: StudentSubjectsCardWidget(
                 subject: subject,
                 attendanceDate: attendanceDate,
@@ -211,7 +231,8 @@ class _StudentAttendanceHomeScreenState extends State<StudentAttendanceHomeScree
       backgroundColor: Colors.white,
       appBar: _buildCustomAppBar(),
       body: _isDataLoading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primaryColor))
+          ? Center(
+              child: CircularProgressIndicator(color: AppColors.primaryColor))
           : _buildSubjectsList(),
     );
   }
