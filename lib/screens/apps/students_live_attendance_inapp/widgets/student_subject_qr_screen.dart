@@ -10,7 +10,6 @@ import 'package:nitris/core/models/subject.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:no_screenshot/no_screenshot.dart';
-import 'package:detect_fake_location/detect_fake_location.dart';
 
 /// Simple XOR encryption helper.
 String simpleXorEncrypt(String plainText, String key) {
@@ -46,6 +45,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   String? _empCode;
   String _empName = '';
   bool _allowPop = false;
+  bool _didCheckFakeLocation = false; // To ensure we run the check only once
 
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -65,38 +65,53 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     _initializeAnimation();
     _formatAttendanceDate();
     _fetchData();
-    _checkFakeLocation();
+    // Removed _checkFakeLocation() call from here.
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didCheckFakeLocation) {
+      _checkFakeLocation();
+      _didCheckFakeLocation = true;
+    }
+  }
+
   Future<void> _checkFakeLocation() async {
-    bool isFake = await DetectFakeLocation().detectFakeLocation();
-    if (isFake) {
-      if (!mounted) return;
-      
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('Fake Location Detected'),
-          content: const Text(
-              'Your location appears to be faked. Please use a valid location to proceed.'),
-          actions: [
-            ElevatedButton(
-              onPressed: () => exit(0),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+    // Only perform fake location check on Android.
+    if (Platform.isAndroid) {
+      // Using geolocator's Position.isMocked to detect mock locations.
+      if (widget.currentPosition.isMocked) {
+        if (!mounted) return;
+        // Schedule showing the dialog after the current frame.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Fake Location Detected'),
+              content: const Text(
+                  'Your location appears to be faked. Please use a valid location to proceed.'),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => exit(0),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-              ),
+              ],
             ),
-          ],
-        ),
-      );
+          );
+        });
+      }
     }
   }
 
@@ -269,8 +284,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 'Go Back',
