@@ -250,7 +250,7 @@ class _AttendancePageState extends State<AttendancePage>
                     elevation: 2,
                   ),
                   child:
-                      const Icon(Icons.search, color: Colors.white, size: 20),
+                      const Icon(Icons.search, color: Colors.white, size: 25),
                 ),
               ),
             ],
@@ -666,7 +666,7 @@ class _AttendancePageState extends State<AttendancePage>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem('Absent  (Late Registration/Admission)',
+              _buildLegendItem('Absent  (Late Registration)',
                   _getAttendanceColor(AttendanceStatus.absentLate)),
             ],
           ),
@@ -674,7 +674,7 @@ class _AttendancePageState extends State<AttendancePage>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem('Present  (Late Registration/Admission)',
+              _buildLegendItem('Present  (Late Registration)',
                   _getAttendanceColor(AttendanceStatus.presentLate)),
             ],
           ),
