@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:nitris/core/enums/attendance_status.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -104,6 +105,7 @@ class _AttendancePageState extends State<AttendancePage> {
   void initState() {
     super.initState();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      _requestPermissions(); // Ask for location and camera access
     _fetchStudents();
 
     // Pre-load these audio assets for quick playback.
@@ -117,7 +119,29 @@ class _AttendancePageState extends State<AttendancePage> {
     _audioPlayer.dispose();
     super.dispose();
   }
+  Future<void> _requestPermissions() async {
+  // Location
+  LocationPermission locationPermission = await Geolocator.checkPermission();
+  if (locationPermission == LocationPermission.denied ||
+      locationPermission == LocationPermission.deniedForever) {
+    locationPermission = await Geolocator.requestPermission();
+  }
 
+  if (locationPermission == LocationPermission.denied ||
+      locationPermission == LocationPermission.deniedForever) {
+      print('Location permission is required to continue.');
+  }
+
+  // Camera
+  PermissionStatus cameraStatus = await Permission.camera.status;
+  if (cameraStatus.isDenied || cameraStatus.isPermanentlyDenied) {
+    cameraStatus = await Permission.camera.request();
+  }
+
+  if (!cameraStatus.isGranted) {
+    print('Camera permission is required to scan QR codes.');
+  }
+}
   /// A small helper to handle device vibration using the `vibration` plugin.
   Future<void> _vibrate(int durationMs) async {
     if (await Vibration.hasVibrator()) {

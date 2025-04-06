@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // For SystemChrome
+import 'package:flutter/services.dart';
 import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
@@ -69,6 +69,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _initializeAnimation();
     _formatAttendanceDate();
+    _checkLocationPermission(); 
     _fetchData();
     // _checkFakeLocation will be run in didChangeDependencies.
   }
@@ -81,6 +82,29 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       _didCheckFakeLocation = true;
     }
   }
+  Future<void> _checkLocationPermission() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _isMockLocation = true;
+      });
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      setState(() {
+        _isMockLocation = true;
+      });
+    }
+  }
+
 
   Future<void> _checkFakeLocation() async {
     // Only perform the fake location check on Android.

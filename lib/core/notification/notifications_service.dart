@@ -119,7 +119,7 @@ class NotificationService {
           title: 'Update Available',
           body:
               'A new version of NITRis is available. Update now to get the latest features and improvements.',
-          payload: AppConstants.playStoreUrl, // Replace with your app's URL
+          payload: AppConstants.appStoreUrl, // Replace with your app's URL
           channelId: 'update_channel_id',
           channelName: 'Update Notifications',
           channelDescription: 'Notifications for app updates',

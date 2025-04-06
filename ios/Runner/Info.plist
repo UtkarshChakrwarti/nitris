@@ -60,6 +60,13 @@
 	<key>NSUserNotificationUsageDescription</key>
 	<string>We need access to notifications to alert you about important updates.</string>
 
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to your location to verify attendance proximity.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to your location to verify attendance proximity.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to scan QR codes.</string>
+
 
 </dict>
 </plist>
