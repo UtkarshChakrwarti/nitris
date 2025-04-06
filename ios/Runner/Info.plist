@@ -45,5 +45,21 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!--Perissions-->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>sms</string>
+		<string>mailto</string>
+		<string>https</string>
+		<string>whatsapp</string>
+	</array>
+
+	<!-- Notifications Permissions -->
+	<key>NSUserNotificationUsageDescription</key>
+	<string>We need access to notifications to alert you about important updates.</string>
+
+
 </dict>
 </plist>
