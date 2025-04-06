@@ -8,7 +8,7 @@ class AppConstants {
   static const String currentAppVersion = '2.0.0';
 
   // Play Store URL
-  static const String playStoreUrl = 'https://play.google.com/store/apps/details?id=com.nitrkl.nitris';
+  static const String appStoreUrl = 'https://apps.apple.com/us/app/nitris/id6739775147';
 
   // API URLs and other constants
   static const String baseUrl =

@@ -1,13 +1,10 @@
+import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
-// import 'package:hello_nitr/core/services/api/remote/api_service.dart';
 import 'package:logging/logging.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/constants/app_constants.dart';
 import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'dart:async';
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -17,26 +14,28 @@ class NotificationService {
   Future<void> initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
+
+    final DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings();
+
+    final InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
     );
 
     try {
       await flutterLocalNotificationsPlugin.initialize(
         initializationSettings,
-        onDidReceiveNotificationResponse:
-            (NotificationResponse notificationResponse) async {
-          String? payload = notificationResponse.payload;
-          if (payload != null && await canLaunch(payload)) {
-            await launch(payload);
+        onDidReceiveNotificationResponse: (NotificationResponse response) async {
+          final payload = response.payload;
+          if (payload != null && await canLaunchUrl(Uri.parse(payload))) {
+            await launchUrl(Uri.parse(payload), mode: LaunchMode.externalApplication);
           } else {
             _logger.warning('Invalid notification payload: $payload');
           }
         },
       );
 
-      // Request notification permissions
       await requestNotificationPermissions();
     } catch (e) {
       _logger.severe('Error initializing notifications: $e');
@@ -45,12 +44,11 @@ class NotificationService {
 
   Future<void> requestNotificationPermissions() async {
     try {
-      PermissionStatus status = await Permission.notification.request();
-      if (status != PermissionStatus.granted) {
-        _logger.warning('Notification permissions not granted');
-      }
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     } catch (e) {
-      _logger.severe('Error requesting notification permissions: $e');
+      _logger.severe('Error requesting iOS notification permissions: $e');
     }
   }
 
@@ -60,43 +58,32 @@ class NotificationService {
     String? payload,
     String channelId = 'default_channel_id',
     String channelName = 'default_channel_name',
-    String channelDescription = 'Default Channel',
+    String channelDescription = 'Default channel for notifications',
   }) async {
-    final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       channelId,
       channelName,
       channelDescription: channelDescription,
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'ticker',
       icon: '@mipmap/ic_launcher',
       color: AppColors.primaryColor,
-      styleInformation: BigTextStyleInformation(
-        body,
-        contentTitle: title,
-      ),
-      enableVibration: true,
-      playSound: true,
-      actions: [
-        const AndroidNotificationAction(
-          'update_action',
-          'Update Now',
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
-      ],
+      styleInformation: BigTextStyleInformation(body),
     );
 
-    final NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+    const iOSDetails = DarwinNotificationDetails();
+
+    final platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iOSDetails,
+    );
 
     try {
       await flutterLocalNotificationsPlugin.show(
         0,
         title,
         body,
-        platformChannelSpecifics,
+        platformDetails,
         payload: payload,
       );
     } catch (e) {
@@ -104,29 +91,24 @@ class NotificationService {
     }
   }
 
-  Future<void> scheduleUpdateNotification() async {
+  Future<void> showUpdateNotificationIfAvailable() async {
     try {
-      // Check for app update
-      bool isUpdateAvailable = await ApiService().checkUpdate();
-
-      // log
+      final isUpdateAvailable = await ApiService().checkUpdate();
       _logger.info('Update available: $isUpdateAvailable');
-
-      // Show update notification if an update is available
 
       if (isUpdateAvailable) {
         await showNotification(
           title: 'Update Available',
           body:
-              'A new version of NITRis is available. Update now to get the latest features and improvements.',
-          payload: AppConstants.playStoreUrl, // Replace with your app's URL
+              'A new version of NITRis is available. Tap to update and enjoy the latest features.',
+          payload: AppConstants.appStoreUrl,
           channelId: 'update_channel_id',
           channelName: 'Update Notifications',
           channelDescription: 'Notifications for app updates',
         );
       }
     } catch (e) {
-      _logger.severe('Error scheduling update notification: $e');
+      _logger.severe('Error checking update status: $e');
     }
   }
 }

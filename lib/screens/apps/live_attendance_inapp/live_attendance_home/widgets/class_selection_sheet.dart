@@ -156,51 +156,72 @@ class _ClassSelectionSheetState extends State<ClassSelectionSheet> {
             Padding(
               padding: EdgeInsets.only(bottom: bottomPadding + 16),
               child: ElevatedButton(
-                onPressed: isButtonActive && !_isLoading
-                    ? () async {
-                        setState(() {
-                          _isLoading = true;
-                        });
-                        final apiService = ApiService();
-                        try {
-                          // Show loading indicator while fetching current position.
-                          final currentPosition = await Geolocator.getCurrentPosition(
-                            desiredAccuracy: LocationAccuracy.high,
-                          );
-                          final latLongString =
-                              '${currentPosition.latitude}|${currentPosition.longitude}';
-                          // Start live session API call.
-                          final activeSession = await apiService.startLiveSession(
-                            widget.subject.sectionId.toString(),
-                            latLongString,
-                          );
-                          final sessionTime = activeSession['sessionTime'];
-                          // Navigate to AttendancePage.
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AttendancePage(
-                                subject: widget.subject,
-                                classNumber: classNumber,
-                                semester: widget.subject.session,
-                                currentYear: currentYear,
-                                academicYear: widget.subject.academicYear,
-                                sectionId: widget.subject.sectionId,
-                                date: dayInt,
-                                month: monthInt,
-                                sessionTime: sessionTime,
-                              ),
+              onPressed: isButtonActive && !_isLoading
+                  ? () async {
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      final apiService = ApiService();
+                      try {
+                        LocationPermission permission = await Geolocator.checkPermission();
+                        if (permission == LocationPermission.denied ||
+                            permission == LocationPermission.deniedForever) {
+                          permission = await Geolocator.requestPermission();
+                        }
+
+                        if (permission == LocationPermission.denied ||
+                            permission == LocationPermission.deniedForever) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Location permission is required to proceed.'),
+                              backgroundColor: AppColors.primaryColor,
                             ),
                           );
-                        } catch (error) {
-                          print("Error starting active session: $error");
                           setState(() {
                             _isLoading = false;
                           });
+                          return;
                         }
+
+                        final currentPosition = await Geolocator.getCurrentPosition(
+                          desiredAccuracy: LocationAccuracy.high,
+                        );
+
+                        final latLongString =
+                            '${currentPosition.latitude}|${currentPosition.longitude}';
+
+                        final activeSession = await apiService.startLiveSession(
+                          widget.subject.sectionId.toString(),
+                          latLongString,
+                        );
+                        final sessionTime = activeSession['sessionTime'];
+
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AttendancePage(
+                              subject: widget.subject,
+                              classNumber: classNumber,
+                              semester: widget.subject.session,
+                              currentYear: currentYear,
+                              academicYear: widget.subject.academicYear,
+                              sectionId: widget.subject.sectionId,
+                              date: dayInt,
+                              month: monthInt,
+                              sessionTime: sessionTime,
+                            ),
+                          ),
+                        );
+                      } catch (error) {
+                        print("Error starting active session: $error");
+                        setState(() {
+                          _isLoading = false;
+                        });
                       }
-                    : null,
+                    }
+                  : null,
+
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: AppColors.primaryColor,

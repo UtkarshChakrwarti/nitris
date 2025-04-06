@@ -68,21 +68,41 @@ class _StudentAttendanceHomeScreenState
 
   Future<void> _handleSubjectTap(Subject subject, int index) async {
     setState(() => _loadingSubjectIndex = index);
+
     try {
-      final apiService = ApiService();
-      final sessionResponse =
-          await apiService.checkSessionStatus(subject.sectionId);
-      if (sessionResponse["status"] != "ACTIVE" ||
-          sessionResponse["location"] == null) {
-        _showErrorSnackBar(
-            "Faculty has not started taking attendance yet. Please wait until faculty starts taking attendance.");
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        final requested = await Geolocator.requestPermission();
+        if (requested == LocationPermission.denied || requested == LocationPermission.deniedForever) {
+          _showErrorSnackBar("Location permission is required to mark attendance.");
+          return;
+        }
+      }
+
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showErrorSnackBar("Please enable location services to mark attendance.");
         return;
       }
+
+      final apiService = ApiService();
+      final sessionResponse = await apiService.checkSessionStatus(subject.sectionId);
+
+      if (sessionResponse["status"] != "ACTIVE" || sessionResponse["location"] == null) {
+        _showErrorSnackBar(
+            "Faculty has not started taking attendance yet. Please wait until faculty starts taking attendance.");
+        return;
+      }
+
       final currentPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
       final sessionLocation = sessionResponse["location"]!.split('|');
-      if (sessionLocation.length < 2)
+      if (sessionLocation.length < 2) {
         throw Exception("Invalid session location data.");
+      }
+
       final sessionLat = double.parse(sessionLocation[0]);
       final sessionLng = double.parse(sessionLocation[1]);
       final distance = Geolocator.distanceBetween(
@@ -91,20 +111,21 @@ class _StudentAttendanceHomeScreenState
         sessionLat,
         sessionLng,
       );
-      //log distance
+
       print("Distance from classroom: ${distance.toStringAsFixed(2)} meters");
 
-      // if (distance >= 10000) {      //for simulation
       if (distance <= 100) {
         final attendanceDate = DateTime.now().toIso8601String();
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => StudentSubjectQrScreen(
-                      subject: subject,
-                      attendanceDate: attendanceDate,
-                      currentPosition: currentPosition,
-                    )));
+          context,
+          MaterialPageRoute(
+            builder: (context) => StudentSubjectQrScreen(
+              subject: subject,
+              attendanceDate: attendanceDate,
+              currentPosition: currentPosition,
+            ),
+          ),
+        );
       } else {
         _showErrorSnackBar(
             "Attendance QR generation not allowed: Please ensure you are within the designated classroom location.");
