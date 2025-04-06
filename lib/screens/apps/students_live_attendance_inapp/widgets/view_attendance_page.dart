@@ -49,11 +49,9 @@ class _AttendancePageState extends State<AttendancePage>
   late final List<int> _years;
 
   // COLORS:
-  final Color _primaryColor =
-      const Color(0xFFC75E33); // Orange (App bar & buttons)
+  final Color _primaryColor = const Color(0xFFC75E33); // Orange (App bar & buttons)
   final Color _backgroundColor = Colors.white; // White page background
   final Color _cardColor = Colors.white; // White cards
-  final Color _lightText = Colors.black54;
   final Color _errorColor = const Color(0xFFB3261E);
 
   @override
@@ -98,16 +96,14 @@ class _AttendancePageState extends State<AttendancePage>
         }
       });
 
-      // 3) Load attendance
+      // 3) Load attendance using the current options.
       await _fetchAttendanceData();
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load initial data: $e';
       });
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -116,6 +112,7 @@ class _AttendancePageState extends State<AttendancePage>
     setState(() {
       _isLoading = true;
       _errorMessage = '';
+      _attendanceData = null; // Clear previous data
     });
     try {
       final url =
@@ -132,13 +129,11 @@ class _AttendancePageState extends State<AttendancePage>
     } catch (e) {
       _errorMessage = 'Failed to load attendance data: $e';
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// Returns color for each attendance status
+  /// Returns color for each attendance status.
   Color _getAttendanceColor(AttendanceStatus status) {
     switch (status) {
       case AttendanceStatus.present:
@@ -158,7 +153,7 @@ class _AttendancePageState extends State<AttendancePage>
 
   int _monthNumber(String month) => _months.indexOf(month) + 1;
 
-  /// Build the top app bar: back arrow + title + refresh button
+  /// Top App Bar.
   AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: _primaryColor,
@@ -182,32 +177,30 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  /// Build the "Search Filters" card with compact styling
+  /// Filters card with reduced spacing.
   Widget _buildFilters() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: _cardColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           )
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Subject dropdown
-          const Text('Subject', style: TextStyle(color: Colors.black54)),
+          const Text('Subject',
+              style: TextStyle(color: Colors.black54, fontSize: 13)),
           const SizedBox(height: 4),
           _buildSubjectDropdown(),
-          const SizedBox(height: 10),
-
-          // Month & Year row with apply button
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -216,41 +209,23 @@ class _AttendancePageState extends State<AttendancePage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Month',
-                        style: TextStyle(color: Colors.black54)),
+                        style: TextStyle(color: Colors.black54, fontSize: 13)),
                     const SizedBox(height: 4),
                     _buildMonthDropdown(),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
                 flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Year', style: TextStyle(color: Colors.black54)),
+                    const Text('Year',
+                        style: TextStyle(color: Colors.black54, fontSize: 13)),
                     const SizedBox(height: 4),
                     _buildYearDropdown(),
                   ],
-                ),
-              ),
-              const SizedBox(width: 4),
-              // Apply button
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: ElevatedButton(
-                  onPressed: _fetchAttendanceData,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.all(10),
-                    minimumSize: const Size(40, 40),
-                    elevation: 2,
-                  ),
-                  child:
-                      const Icon(Icons.search, color: Colors.white, size: 25),
                 ),
               ),
             ],
@@ -260,19 +235,21 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
+  /// Compact Subject dropdown.
   Widget _buildSubjectDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<Subject>(
+          isDense: true,
           isExpanded: true,
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: _primaryColor),
-          style: TextStyle(color: _primaryColor, fontSize: 14),
+          style: TextStyle(color: _primaryColor, fontSize: 13),
           value: _selectedSubject,
           items: _subjects.map((subj) {
             return DropdownMenuItem<Subject>(
@@ -280,25 +257,33 @@ class _AttendancePageState extends State<AttendancePage>
               child: Text('${subj.subjectName} (${subj.subjectCode})'),
             );
           }).toList(),
-          onChanged: (val) => setState(() => _selectedSubject = val),
+          onChanged: (val) {
+            setState(() {
+              _selectedSubject = val;
+              _attendanceData = null;
+            });
+            _fetchAttendanceData();
+          },
         ),
       ),
     );
   }
 
+  /// Compact Month dropdown.
   Widget _buildMonthDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
+          isDense: true,
           isExpanded: true,
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: _primaryColor),
-          style: TextStyle(color: _primaryColor, fontSize: 14),
+          style: TextStyle(color: _primaryColor, fontSize: 13),
           value: _selectedMonth,
           items: _months.map((month) {
             return DropdownMenuItem<String>(
@@ -306,25 +291,33 @@ class _AttendancePageState extends State<AttendancePage>
               child: Text(month),
             );
           }).toList(),
-          onChanged: (val) => setState(() => _selectedMonth = val!),
+          onChanged: (val) {
+            setState(() {
+              _selectedMonth = val!;
+              _attendanceData = null;
+            });
+            _fetchAttendanceData();
+          },
         ),
       ),
     );
   }
 
+  /// Compact Year dropdown.
   Widget _buildYearDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
+          isDense: true,
           isExpanded: true,
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: _primaryColor),
-          style: TextStyle(color: _primaryColor, fontSize: 14),
+          style: TextStyle(color: _primaryColor, fontSize: 13),
           value: _selectedYear,
           items: _years.map((year) {
             return DropdownMenuItem<int>(
@@ -332,14 +325,23 @@ class _AttendancePageState extends State<AttendancePage>
               child: Text(year.toString()),
             );
           }).toList(),
-          onChanged: (val) => setState(() => _selectedYear = val!),
+          onChanged: (val) {
+            setState(() {
+              _selectedYear = val!;
+              _attendanceData = null;
+            });
+            _fetchAttendanceData();
+          },
         ),
       ),
     );
   }
 
-  /// Displays attendance statistics with a compact layout
-  Widget _buildStatistics(AttendanceData data) {
+  /// Statistics card with a 2×2 grid and a bottom row containing:
+  /// - A pill-shaped percentage,
+  /// - A progress bar in between, and
+  /// - Fraction text on the right.
+  Widget _buildStatisticsCard(AttendanceData data) {
     final double percentage =
         data.totalClass > 0 ? (data.totalPresent / data.totalClass) * 100 : 0;
     final Color percentColor = percentage >= 90
@@ -360,111 +362,179 @@ class _AttendancePageState extends State<AttendancePage>
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           )
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Subject name row
+          // Subject row (icon + subject name/code)
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: _primaryColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                   border: Border.all(color: _primaryColor.withOpacity(0.2)),
                 ),
                 child: Icon(Icons.menu_book_rounded,
-                    color: _primaryColor, size: 22),
+                    color: _primaryColor, size: 20),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   '${_selectedSubject?.subjectName} (${_selectedSubject?.subjectCode ?? ''})',
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+                      fontSize: 15, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-
-          // Statistics rows
-          _buildStatRow(
-            Icons.calendar_today_rounded,
-            Colors.grey.shade600,
-            Colors.grey.shade200,
-            'Total Classes',
-            '${data.totalClass}',
-          ),
-          const SizedBox(height: 8),
-          _buildStatRow(
-            Icons.check_circle_rounded,
-            Colors.white,
-            const Color(0xFF4CAF50),
-            'Present',
-            '${data.totalPresent}',
-          ),
-          const SizedBox(height: 8),
-          _buildStatRow(
-            Icons.cancel_rounded,
-            Colors.white,
-            const Color(0xFFEF5350),
-            'Absent',
-            '${data.totalAbsent}',
-          ),
-          const SizedBox(height: 8),
-          _buildStatRow(
-            Icons.pending_rounded,
-            Colors.white,
-            const Color.fromARGB(255, 7, 65, 255),
-            'Leave',
-            '${data.totalLeave}',
-          ),
-          const SizedBox(height: 10),
-
-          // Attendance percentage
-          Text(
-            'Attendance Percentage',
-            style: TextStyle(
-              color: _lightText,
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 4),
+          // 2×2 grid for stats
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${percentage.toStringAsFixed(1)}%',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: percentColor,
+              Expanded(
+                child: _buildStatBox(
+                  icon: Icons.calendar_today_rounded,
+                  label: 'Total Classes',
+                  value: '${data.totalClass}',
+                  iconColor: Colors.grey.shade600,
+                  bgColor: Colors.grey.shade200,
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatBox(
+                  icon: Icons.check_circle_rounded,
+                  label: 'Present',
+                  value: '${data.totalPresent}',
+                  iconColor: Colors.white,
+                  bgColor: const Color(0xFF4CAF50),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatBox(
+                  icon: Icons.cancel_rounded,
+                  label: 'Absent',
+                  value: '${data.totalAbsent}',
+                  iconColor: Colors.white,
+                  bgColor: const Color(0xFFEF5350),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatBox(
+                  icon: Icons.pending_rounded,
+                  label: 'Leave',
+                  value: '${data.totalLeave}',
+                  iconColor: Colors.white,
+                  bgColor: const Color.fromARGB(255, 7, 65, 255),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Bottom row with pill, progress bar, and fraction text
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Percentage pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: percentColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${percentage.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    color: percentColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Progress bar in between
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: data.totalClass == 0
+                        ? 0
+                        : data.totalPresent / data.totalClass,
+                    minHeight: 6,
+                    color: percentColor,
+                    backgroundColor: Colors.grey.shade300,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Fraction text on the right
               Text(
                 '${data.totalPresent}/${data.totalClass}',
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: data.totalClass == 0
-                  ? 0
-                  : data.totalPresent / data.totalClass,
-              minHeight: 6,
-              color: percentColor,
-              backgroundColor: Colors.grey.shade300,
+        ],
+      ),
+    );
+  }
+
+  /// Helper for a single stat box (icon + label + value)
+  Widget _buildStatBox({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color iconColor,
+    required Color bgColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: bgColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: iconColor),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -472,41 +542,7 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  // Helper for a compact stat row
-  Widget _buildStatRow(IconData icon, Color iconColor, Color bgColor,
-      String label, String value) {
-    return Row(
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: bgColor,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 18),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// A non-swipeable TableCalendar with a compact design
+  /// TableCalendar widget with corrected day painting.
   Widget _buildTableCalendar() {
     if (_attendanceData == null) return const SizedBox();
 
@@ -527,7 +563,7 @@ class _AttendancePageState extends State<AttendancePage>
 
     return Column(
       children: [
-        // Month-Year heading in pill shape
+        // Month-Year heading in a pill shape.
         Container(
           margin: const EdgeInsets.only(top: 8, bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -545,9 +581,9 @@ class _AttendancePageState extends State<AttendancePage>
             ),
           ),
         ),
-        // Calendar card
+        // Calendar card.
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             color: _cardColor,
             borderRadius: BorderRadius.circular(10),
@@ -584,7 +620,7 @@ class _AttendancePageState extends State<AttendancePage>
                     style: TextStyle(
                       color: Colors.grey.shade700,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 );
@@ -616,8 +652,10 @@ class _AttendancePageState extends State<AttendancePage>
                   return Center(
                     child: Text(
                       '${day.day}',
-                      style:
-                          const TextStyle(color: Colors.black87, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 12,
+                      ),
                     ),
                   );
                 }
@@ -629,22 +667,16 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  /// Displays a compact legend for attendance statuses in two rows
+  /// Legend – using the original legend names.
   Widget _buildLegend() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: _cardColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          )
-        ],
+        // borderRadius: BorderRadius.circular(10),
+        // border: Border.all(color: Colors.grey.shade200),
+       
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -662,19 +694,22 @@ class _AttendancePageState extends State<AttendancePage>
             ],
           ),
           const SizedBox(height: 6),
-          // Second row with two items; consider shortening long text if needed.
+          // Second row with one item
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem('Absent  (Late Registration)',
+              _buildLegendItem(
+                  'Absent  (Late Registration)',
                   _getAttendanceColor(AttendanceStatus.absentLate)),
             ],
           ),
           const SizedBox(height: 6),
+          // Third row with one item
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem('Present  (Late Registration)',
+              _buildLegendItem(
+                  'Present  (Late Registration)',
                   _getAttendanceColor(AttendanceStatus.presentLate)),
             ],
           ),
@@ -685,6 +720,7 @@ class _AttendancePageState extends State<AttendancePage>
 
   Widget _buildLegendItem(String label, Color color) {
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
@@ -725,8 +761,7 @@ class _AttendancePageState extends State<AttendancePage>
                     children: [
                       _buildFilters(),
                       if (_attendanceData != null) ...[
-                        _buildStatistics(_attendanceData!),
-                        const SizedBox(height: 8),
+                        _buildStatisticsCard(_attendanceData!),
                         _buildTableCalendar(),
                         _buildLegend(),
                       ],

@@ -39,7 +39,7 @@ class StudentSubjectQrScreen extends StatefulWidget {
 }
 
 class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool _isLoading = true;
   String? _error;
   String? _empCode;
@@ -60,6 +60,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     // Disable screenshots for this page (Android only)
     _disableScreenshots();
 
@@ -68,7 +70,7 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     _initializeAnimation();
     _formatAttendanceDate();
     _fetchData();
-    // Removed _checkFakeLocation from initState
+    // _checkFakeLocation will be run in didChangeDependencies.
   }
 
   @override
@@ -108,8 +110,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
                   ),
                   child: const Text(
                     'OK',
@@ -132,11 +134,26 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // Re-enable screenshots when leaving this screen.
     NoScreenshot.instance.screenshotOn();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _animationController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // When returning to the app, if this route is current, disable screenshots.
+      if (ModalRoute.of(context)?.isCurrent ?? false) {
+        _disableScreenshots();
+      }
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      // When app goes to background, re-enable screenshots.
+      NoScreenshot.instance.screenshotOn();
+    }
   }
 
   void _initializeAnimation() {
@@ -167,7 +184,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
   void _formatAttendanceDate() {
     try {
       final parsedDate = DateTime.parse(widget.attendanceDate);
-      _localDateString = DateFormat('dd MMM yyyy, hh:mm a').format(parsedDate);
+      _localDateString =
+          DateFormat('dd MMM yyyy, hh:mm a').format(parsedDate);
     } catch (e) {
       _localDateString = widget.attendanceDate;
     }
@@ -235,7 +253,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
     final empCode = _empCode ?? 'UNKNOWN';
     final lat = widget.currentPosition.latitude.toStringAsFixed(6);
     final long = widget.currentPosition.longitude.toStringAsFixed(6);
-    final qrData = generateQRData(empCode, lat, long, generatedTime, sectionId);
+    final qrData =
+        generateQRData(empCode, lat, long, generatedTime, sectionId);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -312,12 +331,13 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 10),
               ),
               child: const Text(
                 'Go Back',
-                style: TextStyle(fontSize: 14, color: Colors.white),
+                style:
+                    TextStyle(fontSize: 14, color: Colors.white),
               ),
             ),
           ],
@@ -391,8 +411,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
           ),
           const SizedBox(height: 1),
           Text(value,
-              style:
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -422,7 +442,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.primaryColor.withOpacity(0.08),
               borderRadius: BorderRadius.circular(30),
@@ -464,8 +485,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       ),
       child: Column(
         children: [
-          _buildDetailRow(
-              Icons.access_time_outlined, 'Date & Time', _localDateString),
+          _buildDetailRow(Icons.access_time_outlined, 'Date & Time',
+              _localDateString),
           const Divider(height: 16),
           _buildDetailRow(Icons.class_, 'Student Details',
               'Roll No: $_empCode\nName: $_empName'),
@@ -487,7 +508,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
             color: AppColors.primaryColor.withOpacity(0.08),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: AppColors.primaryColor, size: 18),
+          child: Icon(icon,
+              color: AppColors.primaryColor, size: 18),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -501,7 +523,8 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
               const SizedBox(height: 4),
               Text(value,
                   style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -519,14 +542,18 @@ class _StudentSubjectQrScreenState extends State<StudentSubjectQrScreen>
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30)),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 24, vertical: 10),
         elevation: 4,
       ),
       child: const Text(
         'Done',
         style: TextStyle(
-            fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.white),
       ),
     );
   }
