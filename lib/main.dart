@@ -8,7 +8,7 @@ import 'package:nitris/core/notification/notifications_service.dart';
 import 'package:nitris/core/permission/permissions_util.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-const String originalPackageName = "com.nitrkl.nitris"; // Change this
+const String originalPackageName = "com.nitrkl.nitris"; // Adjust if needed
 
 Future<bool> isClonedApp() async {
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
@@ -16,17 +16,16 @@ Future<bool> isClonedApp() async {
 }
 
 void main() async {
-  _setupLogging(); // Setup logging
+  _setupLogging();
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Check if the app is cloned
+  // Clone app detection
   bool isCloned = await isClonedApp();
   if (isCloned) {
     if (kDebugMode) {
       print("Cloned app detected. Exiting...");
     }
 
-    // Show alert to users before exiting
     runApp(MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Builder(
@@ -47,8 +46,6 @@ void main() async {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
                     ),
                     child: const Text('OK'),
                   ),
@@ -57,37 +54,29 @@ void main() async {
             );
           });
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         },
       ),
     ));
-
-    return; // Stop further execution
+    return;
   }
 
-  // Request necessary permissions
+  // Request OS-level permissions
   await requestPermissions();
 
-  // Initialize the NotificationService
-  NotificationService notificationService = NotificationService();
+  // Setup notifications
+  final notificationService = NotificationService();
   await notificationService.initializeNotifications();
-  await notificationService
-      .requestNotificationPermissions(); // Request notification permissions
-
-  // Schedule the update notification
-  notificationService.scheduleUpdateNotification();
+  await notificationService.showUpdateNotificationIfAvailable();
 
   runApp(MyApp(notificationService: notificationService));
 }
 
 void _setupLogging() {
-  // Setup logging for the app only in debug mode
-  Logger.root.onRecord.listen((LogRecord rec) {
+  Logger.root.onRecord.listen((record) {
     if (kDebugMode) {
-      print('${rec.level.name}: ${rec.time}: ${rec.message}');
+      print('${record.level.name}: ${record.time}: ${record.message}');
     }
   });
 }

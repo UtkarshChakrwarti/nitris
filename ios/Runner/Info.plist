@@ -46,7 +46,7 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
-	<!--Perissions-->
+	<!-- Permissions -->
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>
@@ -56,17 +56,32 @@
 		<string>whatsapp</string>
 	</array>
 
-	<!-- Notifications Permissions -->
-	<key>NSUserNotificationUsageDescription</key>
-	<string>We need access to notifications to alert you about important updates.</string>
+	<!-- Background notifications -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 
+	<!-- App Transport Security -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+
+	<!-- Notification Alert Style -->
+	<key>NSUserNotificationAlertStyle</key>
+	<string>alert</string>
+
+	<!-- iOS Permissions -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to your location to verify attendance proximity.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app needs access to your location to verify attendance proximity.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to scan QR codes.</string>
-
-
+	<key>NSUserNotificationUsageDescription</key>
+	<string>This app uses notifications to keep you updated about important events.</string>
+	
 </dict>
 </plist>
