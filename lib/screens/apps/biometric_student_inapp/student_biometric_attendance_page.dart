@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:nitris/core/constants/app_colors.dart';
@@ -16,10 +17,12 @@ class StudentAttendancePageBiometric extends StatefulWidget {
   const StudentAttendancePageBiometric({super.key});
 
   @override
-  State<StudentAttendancePageBiometric> createState() => _StudentAttendancePageBiometricState();
+  State<StudentAttendancePageBiometric> createState() =>
+      _StudentAttendancePageBiometricState();
 }
 
-class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBiometric> {
+class _StudentAttendancePageBiometricState
+    extends State<StudentAttendancePageBiometric> {
   // Student information
   String _studentName = "Student";
   String _rollNumber = "";
@@ -39,8 +42,18 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
   String _selectedMonth = '';
   int _selectedYear = DateTime.now().year;
   final List<String> months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   late final List<int> years;
 
@@ -50,31 +63,32 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
   bool _hasNetworkError = false;
   // ignore: unused_field
   String _errorMessage = '';
-  
+
   // Data store
   List<AttendanceRecord> _attendanceRecords = [];
-  
+
   // HTTP client for better connection management
   late http.Client _httpClient;
-  
+
   // Debouncer for network requests
   Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize HTTP client
     _httpClient = http.Client();
-    
+
     // Set current month
     _selectedMonth = months[DateTime.now().month - 1];
-    
+
     // Generate years for dropdown (current year and 4 previous years)
     years = List.generate(5, (i) => DateTime.now().year - i);
-    
+
     // Only load student data once, then fetch attendance data
     _loadStudentData();
+    _loadAvatarImage();
   }
 
   @override
@@ -85,33 +99,56 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
     super.dispose();
   }
 
+  // Add these properties to the _StudentAttendancePageBiometricState class:
+  Uint8List? _cachedAvatarImage;
+  bool _avatarLoadAttempted = false;
+
+// Add this method to your class to load the avatar once:
+  Future<void> _loadAvatarImage() async {
+    if (_avatarLoadAttempted) return;
+
+    _avatarLoadAttempted = true;
+    try {
+      final avatarBase64 = await LocalStorageService.getCurrentUserAvatar();
+      if (avatarBase64 != null && avatarBase64.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _cachedAvatarImage = base64Decode(avatarBase64);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading avatar image: $e');
+    }
+  }
+
   /// Load student data from local storage
   Future<void> _loadStudentData() async {
     try {
       final empcode = await LocalStorageService.getCurrentUserEmpCode();
       final fullName = await LocalStorageService.getCurrentUserFullName();
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _rollNumber = empcode ?? "";
-        _studentName = fullName != null 
+        _studentName = fullName != null
             ? fullName.replaceAll(RegExp(r'\s+'), ' ').trim()
             : "Student";
       });
-      
+
       // Fetch attendance data after student data is loaded
       _fetchInitialData();
     } catch (e) {
       debugPrint('Error loading student data: $e');
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _rollNumber = "";
         _studentName = "Student";
       });
-      
+
       // Still try to fetch attendance data even if student data fails
       _fetchInitialData();
     }
@@ -121,7 +158,7 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
   Future<void> _fetchInitialData() async {
     // Prevent multiple concurrent requests
     if (_isInitialLoading) return;
-    
+
     setState(() {
       _isInitialLoading = true;
       _errorMessage = '';
@@ -129,17 +166,19 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
     });
 
     final monthIdx = months.indexOf(_selectedMonth) + 1;
-    final url = 'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance?rollno=$_rollNumber&month=$monthIdx&year=$_selectedYear';
+    final url =
+        'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance?rollno=$_rollNumber&month=$monthIdx&year=$_selectedYear';
 
     try {
       // Use dedicated HTTP client with proper timeout
       final res = await _httpClient.get(Uri.parse(url)).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          throw Exception('Connection timed out. Please check your internet connection and try again.');
+          throw Exception(
+              'Connection timed out. Please check your internet connection and try again.');
         },
       );
-      
+
       // Handle HTTP status codes
       if (res.statusCode != 200) {
         if (res.statusCode >= 500) {
@@ -155,29 +194,30 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
       final summary = StudentAttendanceSummary.fromJson(
         json.decode(res.body) as Map<String, dynamic>,
       );
-      
+
       final stats = _calculateStats(summary.records);
       final todayRec = _getTodayRecord(summary.records);
 
       if (!mounted) return;
-      
+
       setState(() {
         _attendanceRecords = summary.records;
         presentCount = stats['present']!;
         absentCount = stats['absent']!;
         leaveAvailed = summary.leaveAvailed;
         leaveRemaining = summary.leaveRemaining;
-        
+
         // Update selected date based on current month/year
-        if (DateTime.now().month == monthIdx && DateTime.now().year == _selectedYear) {
+        if (DateTime.now().month == monthIdx &&
+            DateTime.now().year == _selectedYear) {
           _selectedDate = DateTime.now();
         } else {
           // Or select the first day with attendance data
-          final firstValidDay = summary.records.isNotEmpty ? 
-            summary.records.first.day : 1;
+          final firstValidDay =
+              summary.records.isNotEmpty ? summary.records.first.day : 1;
           _selectedDate = DateTime(_selectedYear, monthIdx, firstValidDay);
         }
-        
+
         // Update time display
         _timeIn = todayRec.inTime.isNotEmpty ? todayRec.inTime : '--:--';
         _timeOut = todayRec.outTime.isNotEmpty ? todayRec.outTime : '--:--';
@@ -185,24 +225,25 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
       });
     } catch (e) {
       if (!mounted) return;
-      
+
       // Create a user-friendly error message
       String errorMsg;
-      if (e.toString().contains('SocketException') || 
+      if (e.toString().contains('SocketException') ||
           e.toString().contains('Connection refused') ||
           e.toString().contains('timed out') ||
           e.toString().contains('Failed host lookup') ||
           e.toString().contains('Network is unreachable')) {
-        errorMsg = 'No internet connection. Please check your network and try again.';
+        errorMsg =
+            'No internet connection. Please check your network and try again.';
       } else {
         errorMsg = 'Failed to load attendance data: ${e.toString()}';
       }
-      
+
       setState(() {
         _errorMessage = errorMsg;
         _hasNetworkError = true;
       });
-      
+
       // Show error message
       _showErrorSnackBar(errorMsg, _fetchInitialData);
     } finally {
@@ -216,23 +257,25 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
   /// Fetch calendar data when month/year changes
   Future<void> _fetchCalendarData() async {
     if (_isCalendarLoading) return;
-    
+
     setState(() {
       _isCalendarLoading = true;
     });
 
     final monthIdx = months.indexOf(_selectedMonth) + 1;
-    final url = 'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance?rollno=$_rollNumber&month=$monthIdx&year=$_selectedYear';
+    final url =
+        'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance?rollno=$_rollNumber&month=$monthIdx&year=$_selectedYear';
 
     try {
       // Use dedicated HTTP client
       final res = await _httpClient.get(Uri.parse(url)).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          throw Exception('Connection timed out. Please check your internet connection and try again.');
+          throw Exception(
+              'Connection timed out. Please check your internet connection and try again.');
         },
       );
-      
+
       // Handle HTTP status codes
       if (res.statusCode != 200) {
         if (res.statusCode >= 500) {
@@ -248,37 +291,39 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
       final summary = StudentAttendanceSummary.fromJson(
         json.decode(res.body) as Map<String, dynamic>,
       );
-      
+
       final stats = _calculateStats(summary.records);
 
       if (!mounted) return;
-      
+
       setState(() {
         _attendanceRecords = summary.records;
         presentCount = stats['present']!;
         absentCount = stats['absent']!;
         leaveAvailed = summary.leaveAvailed;
         leaveRemaining = summary.leaveRemaining;
-        
+
         // Update selected date if we have data
         if (summary.records.isNotEmpty) {
           final firstValidDay = summary.records.first.day;
           _selectedDate = DateTime(_selectedYear, monthIdx, firstValidDay);
-          
+
           // Update time display for selected date
           final record = _getRecordForDay(firstValidDay);
-          _timeIn = record?.inTime.isNotEmpty ?? false ? record!.inTime : '--:--';
-          _timeOut = record?.outTime.isNotEmpty ?? false ? record!.outTime : '--:--';
+          _timeIn =
+              record?.inTime.isNotEmpty ?? false ? record!.inTime : '--:--';
+          _timeOut =
+              record?.outTime.isNotEmpty ?? false ? record!.outTime : '--:--';
         }
-        
+
         _hasNetworkError = false;
       });
     } catch (e) {
       if (!mounted) return;
-      
+
       // Create a user-friendly error message
       String errorMsg;
-      if (e.toString().contains('SocketException') || 
+      if (e.toString().contains('SocketException') ||
           e.toString().contains('Connection refused') ||
           e.toString().contains('timed out') ||
           e.toString().contains('Failed host lookup') ||
@@ -287,14 +332,15 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
       } else {
         errorMsg = 'Failed to update calendar data: ${e.toString()}';
       }
-      
+
       setState(() {
         _hasNetworkError = true;
         _errorMessage = errorMsg;
       });
-      
+
       // Show a toast notification for calendar errors
-      _showErrorSnackBar(errorMsg, _fetchCalendarData, duration: const Duration(seconds: 3));
+      _showErrorSnackBar(errorMsg, _fetchCalendarData,
+          duration: const Duration(seconds: 3));
     } finally {
       if (mounted) {
         setState(() => _isCalendarLoading = false);
@@ -303,7 +349,8 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
   }
 
   /// Show error snackbar with retry option
-  void _showErrorSnackBar(String message, VoidCallback onRetry, {Duration? duration}) {
+  void _showErrorSnackBar(String message, VoidCallback onRetry,
+      {Duration? duration}) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -326,7 +373,7 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
   void _refreshData() {
     // Cancel any pending timer
     _debounceTimer?.cancel();
-    
+
     // Show a loading indicator
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -349,7 +396,7 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
       _selectedMonth = months[DateTime.now().month - 1];
       _selectedYear = DateTime.now().year;
     });
-    
+
     // Add a small delay to ensure UI updates first
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _fetchInitialData();
@@ -360,7 +407,7 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
   void _onMonthYearChanged() {
     // Cancel any pending timer
     _debounceTimer?.cancel();
-    
+
     // Add a small delay to prevent multiple rapid requests
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _fetchCalendarData();
@@ -426,7 +473,8 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
     setState(() {
       _selectedDate = DateTime(_selectedYear, monthIndex, day);
       _timeIn = record?.inTime.isNotEmpty ?? false ? record!.inTime : '--:--';
-      _timeOut = record?.outTime.isNotEmpty ?? false ? record!.outTime : '--:--';
+      _timeOut =
+          record?.outTime.isNotEmpty ?? false ? record!.outTime : '--:--';
     });
   }
 
@@ -501,7 +549,8 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
               ),
             ],
@@ -527,25 +576,26 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
             padding: const EdgeInsets.all(12),
             child: _buildProfileBlock(),
           ),
-            Expanded(
+          Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
-              await _fetchInitialData();
-              return;
+                await _fetchInitialData();
+                return;
               },
               color: AppColors.primaryColor, // Set spinner color to primary
               child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Column(
-                children: [
-                _buildDailyStatusBlock(),
-                _buildMonthlyStatusBlock(),
-                _buildCalendarBlock(),
-                _buildLegendBlock(),
-                const SizedBox(height: 20),
-                ],
-              ),
+                physics:
+                    const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Column(
+                  children: [
+                    _buildDailyStatusBlock(),
+                    _buildMonthlyStatusBlock(),
+                    _buildCalendarBlock(),
+                    _buildLegendBlock(),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -554,25 +604,40 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
     );
   }
 
-  /// Build user profile with name and roll number
+  /// Build user profile with name and roll number - improved version
   Widget _buildProfileBlock() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 3),
+          BoxShadow(
+            color: Colors.black.withOpacity(.07),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppColors.primaryColor,
-            child: const Icon(Icons.person, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
+          // Use cached avatar with larger size
+          _cachedAvatarImage != null
+              ? CircleAvatar(
+                  radius: 23, // Larger avatar
+                  backgroundColor: AppColors.primaryColor,
+                  backgroundImage: MemoryImage(_cachedAvatarImage!),
+                  onBackgroundImageError: (_, __) {
+                    debugPrint('Error displaying cached avatar image');
+                  },
+                )
+              : CircleAvatar(
+                  radius: 23, // Larger avatar
+                  backgroundColor: AppColors.primaryColor,
+                  child:
+                      const Icon(Icons.person, color: Colors.white, size: 32),
+                ),
+          const SizedBox(width: 16), // Wider spacing
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,14 +645,31 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
                 Text(
                   _studentName,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 16, // Slightly larger text
                     fontWeight: FontWeight.bold,
                     color: AppColors.textColor,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  _rollNumber,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                const SizedBox(height: 4), // Add space between text
+                Row(
+                  children: [
+                    Icon(
+                      Icons.badge_outlined,
+                      size: 14,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _rollNumber,
+                      style: TextStyle(
+                        fontSize: 13, // Slightly larger text
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -691,88 +773,88 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
           ),
           const SizedBox(height: 12),
           // Keep stats visible during loading, but show shimmer/skeleton effect
-          _isCalendarLoading ? 
-          Opacity(
-            opacity: 0.6,
-            child: Column(
-              children: [
-                Row(
+          _isCalendarLoading
+              ? Opacity(
+                  opacity: 0.6,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          StatCard(
+                            title: 'Present',
+                            value: '...',
+                            color: AppColors.greenStatus.withOpacity(0.5),
+                            icon: Icons.check_circle_outline,
+                          ),
+                          const SizedBox(width: 6),
+                          StatCard(
+                            title: 'Absent',
+                            value: '...',
+                            color: AppColors.yellowStatus.withOpacity(0.5),
+                            icon: Icons.cancel_outlined,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          StatCard(
+                            title: 'Leave Availed',
+                            value: '...',
+                            color: AppColors.darkGreen.withOpacity(0.5),
+                            icon: Icons.event_busy,
+                          ),
+                          const SizedBox(width: 6),
+                          StatCard(
+                            title: 'Leave Remaining',
+                            value: '...',
+                            color: AppColors.darkRed.withOpacity(0.5),
+                            icon: Icons.event_available,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
                   children: [
-                    StatCard(
-                      title: 'Present',
-                      value: '...',
-                      color: AppColors.greenStatus.withOpacity(0.5),
-                      icon: Icons.check_circle_outline,
+                    Row(
+                      children: [
+                        StatCard(
+                          title: 'Present',
+                          value: '$presentCount',
+                          color: AppColors.greenStatus,
+                          icon: Icons.check_circle_outline,
+                        ),
+                        const SizedBox(width: 6),
+                        StatCard(
+                          title: 'Absent',
+                          value: '$absentCount',
+                          color: AppColors.yellowStatus,
+                          icon: Icons.cancel_outlined,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    StatCard(
-                      title: 'Absent',
-                      value: '...',
-                      color: AppColors.yellowStatus.withOpacity(0.5),
-                      icon: Icons.cancel_outlined,
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        StatCard(
+                          title: 'Leave Availed',
+                          value: '$leaveAvailed',
+                          color: AppColors.darkGreen,
+                          icon: Icons.event_busy,
+                        ),
+                        const SizedBox(width: 6),
+                        StatCard(
+                          title: 'Leave Remaining',
+                          value: '$leaveRemaining',
+                          color: AppColors.darkRed,
+                          icon: Icons.event_available,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    StatCard(
-                      title: 'Leave Availed',
-                      value: '...',
-                      color: AppColors.darkGreen.withOpacity(0.5),
-                      icon: Icons.event_busy,
-                    ),
-                    const SizedBox(width: 6),
-                    StatCard(
-                      title: 'Leave Remaining',
-                      value: '...',
-                      color: AppColors.darkRed.withOpacity(0.5),
-                      icon: Icons.event_available,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ) :
-          Column(
-            children: [
-              Row(
-                children: [
-                  StatCard(
-                    title: 'Present',
-                    value: '$presentCount',
-                    color: AppColors.greenStatus,
-                    icon: Icons.check_circle_outline,
-                  ),
-                  const SizedBox(width: 6),
-                  StatCard(
-                    title: 'Absent',
-                    value: '$absentCount',
-                    color: AppColors.yellowStatus,
-                    icon: Icons.cancel_outlined,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  StatCard(
-                    title: 'Leave Availed',
-                    value: '$leaveAvailed',
-                    color: AppColors.darkGreen,
-                    icon: Icons.event_busy,
-                  ),
-                  const SizedBox(width: 6),
-                  StatCard(
-                    title: 'Leave Remaining',
-                    value: '$leaveRemaining',
-                    color: AppColors.darkRed,
-                    icon: Icons.event_available,
-                  ),
-                ],
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -818,48 +900,49 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
                   ),
                   const SizedBox(width: 12),
                   // Calendar-specific refresh button
-                  _isCalendarLoading ? 
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
-                    ),
-                  ) :
-                  GestureDetector(
-                    onTap: _fetchCalendarData,
-                    child: const Icon(
-                      Icons.refresh,
-                      size: 18,
-                      color: AppColors.primaryColor,
-                    ),
-                  ),
+                  _isCalendarLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.primaryColor),
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: _fetchCalendarData,
+                          child: const Icon(
+                            Icons.refresh,
+                            size: 18,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 12),
-          _isCalendarLoading ? 
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40.0),
-              child: Column(
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading calendar data...',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
+          _isCalendarLoading
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: Column(
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading calendar data...',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ) : 
-          _buildCompactCalendar(),
+                )
+              : _buildCompactCalendar(),
         ],
       ),
     );
@@ -930,23 +1013,22 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children:
-              ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                  .map(
-                    (day) => SizedBox(
-                      width: 25,
-                      child: Text(
-                        day,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey,
-                        ),
-                      ),
+          children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+              .map(
+                (day) => SizedBox(
+                  width: 25,
+                  child: Text(
+                    day,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
                     ),
-                  )
-                  .toList(),
+                  ),
+                ),
+              )
+              .toList(),
         ),
         const SizedBox(height: 4),
         GridView.builder(
@@ -977,23 +1059,20 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
     final now = DateTime.now();
     final isToday =
         day == now.day && monthIndex == now.month && _selectedYear == now.year;
-    final isSelected =
-        !isFuture &&
+    final isSelected = !isFuture &&
         day == _selectedDate.day &&
         monthIndex == _selectedDate.month &&
         _selectedYear == _selectedDate.year;
 
     final baseColor = _getStatusColor(day);
-    final backgroundColor =
-        isFuture
-            ? Colors.grey.withOpacity(.15)
-            : isSelected
+    final backgroundColor = isFuture
+        ? Colors.grey.withOpacity(.15)
+        : isSelected
             ? AppColors.primaryColor.withOpacity(.2)
             : baseColor.withOpacity(.15);
-    final border =
-        isSelected
-            ? Border.all(color: AppColors.primaryColor, width: 2)
-            : isToday
+    final border = isSelected
+        ? Border.all(color: AppColors.primaryColor, width: 2)
+        : isToday
             ? Border.all(color: AppColors.primaryColor.withOpacity(.5))
             : null;
 
@@ -1014,10 +1093,9 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color:
-                    isFuture
-                        ? Colors.grey
-                        : isSelected
+                color: isFuture
+                    ? Colors.grey
+                    : isSelected
                         ? AppColors.primaryColor
                         : AppColors.textColor,
               ),
@@ -1077,7 +1155,8 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
             isExpanded: true,
             icon: const Icon(Icons.keyboard_arrow_down, size: 16),
             items: months
-                .map((month) => DropdownMenuItem(value: month, child: Text(month)))
+                .map((month) =>
+                    DropdownMenuItem(value: month, child: Text(month)))
                 .toList(),
             onChanged: (value) {
               if (value != null && value != _selectedMonth) {
@@ -1108,7 +1187,8 @@ class _StudentAttendancePageBiometricState extends State<StudentAttendancePageBi
             isExpanded: true,
             icon: const Icon(Icons.keyboard_arrow_down, size: 16),
             items: years
-                .map((year) => DropdownMenuItem(value: year, child: Text('$year')))
+                .map((year) =>
+                    DropdownMenuItem(value: year, child: Text('$year')))
                 .toList(),
             onChanged: (value) {
               if (value != null && value != _selectedYear) {
