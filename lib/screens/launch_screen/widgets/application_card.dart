@@ -8,7 +8,8 @@ import 'package:nitris/core/constants/app_colors.dart';
 class ApplicationCard extends StatelessWidget {
   final Application application;
 
-  const ApplicationCard({Key? key, required this.application}) : super(key: key);
+  const ApplicationCard({Key? key, required this.application})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -36,18 +37,21 @@ class ApplicationCard extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
+              final loginResponse =
+                  await LocalStorageService.getLoginResponse();
+              final employeeType =
+                  loginResponse?.employeeType?.toLowerCase() ?? 'employee';
               // Navigation logic remains the same.
               if (application.label == 'Live Class') {
-                final loginResponse = await LocalStorageService.getLoginResponse();
-                final employeeType =
-                    loginResponse?.employeeType?.toLowerCase() ?? 'employee';
                 if (employeeType == 'student') {
                   Navigator.of(context).pushNamed('/studentAttendance');
                 } else {
                   Navigator.of(context).pushNamed('/attendanceHome');
                 }
               } else if (application.label == 'Hello') {
-                ContactsUpdateController().hasExistingContacts().then((hasContacts) {
+                ContactsUpdateController()
+                    .hasExistingContacts()
+                    .then((hasContacts) {
                   if (hasContacts) {
                     Navigator.of(context).pushNamed('/helloNITRHome');
                   } else {
@@ -57,10 +61,11 @@ class ApplicationCard extends StatelessWidget {
               }
               // Add more navigation logic for other applications as needed.
               // for a 'Biometric' application
-              else if (application.label == 'Biometric') {
-                Navigator.of(context).pushNamed('/biometricAttendance');
+              else if (employeeType == 'student') {
+                Navigator.of(context).pushNamed('/biometricAttendanceStudent');
+              } else {
+                Navigator.of(context).pushNamed('/biometricAttendanceFaculty');
               }
-            
             },
             borderRadius: BorderRadius.circular(16),
             splashColor: AppColors.lightSecondaryColor,
@@ -87,7 +92,8 @@ class ApplicationCard extends StatelessWidget {
               ),
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center, // Vertically center content.
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // Vertically center content.
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
