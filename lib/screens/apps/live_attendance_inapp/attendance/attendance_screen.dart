@@ -620,7 +620,7 @@ class _AttendancePageState extends State<AttendancePage> {
         SnackBar(
           backgroundColor: Colors.red[700],
           content: Text(
-            'Expired old QR code! Ask the student to generate fresh QR',
+            'Expired old QR code! Ask the student to generate fresh QR.',
             style: const TextStyle(color: Colors.white),
           ),
         ),

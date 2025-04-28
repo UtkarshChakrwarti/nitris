@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nitris/screens/login/widgets/info_button.dart';
 import 'package:nitris/screens/login/widgets/welcome_text.dart';
 import 'package:nitris/screens/login/widgets/text_field.dart';
 import 'package:nitris/screens/login/widgets/sign_in_button.dart';
@@ -122,6 +123,9 @@ class _LoginScreenState extends State<LoginScreen>
                               });
                             },
                           ),
+                          const SizedBox(height: 2),
+                          //info button
+                          const InfoButton(),
                           SizedBox(height: constraints.maxHeight * 0.025),
                           ValueListenableBuilder<bool>(
                             valueListenable: _allFieldsFilled,

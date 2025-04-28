@@ -40,7 +40,7 @@ class _BiometricAttendancePageState extends State<BiometricAttendancePage> with 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "Biometric Attendance",
+          "Faculty Biometric Attendance",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,

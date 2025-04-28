@@ -15,4 +15,13 @@ class AppColors {
   static const darkRed = Color.fromARGB(255, 255, 0, 0); // Dark Red
   static const lightGreen = Color.fromARGB(255, 204, 255, 204); // Light Green
   static const lightRed = Color.fromARGB(255, 255, 204, 204); // Light Red
+
+    // Status colors
+  static const yellowStatus = Color.fromARGB(255, 235, 209, 131);
+  static const blueStatus = Color.fromARGB(255, 144, 203, 249);
+  static const greenStatus = Color.fromARGB(255, 166, 215, 168);
+  static const redStatus = Color.fromARGB(255, 250, 161, 155);
+  static const purpleStatus = Color.fromARGB(255, 206, 147, 216);
+  static const cyanStatus = Color.fromARGB(255, 128, 222, 234);
+  
 }
