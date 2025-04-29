@@ -59,5 +59,11 @@ class AttendanceRecord {
   bool get isFutureDate => message == 'Date is more than current date';
 
   bool get isOneSignature => message =='One Signature';
+
+    /// True if supervisor has approved this record (duration is set)
+  bool get isApproved => duration.isNotEmpty;
+
+  /// True if it’s an Absent entry that’s been approved by the supervisor
+  bool get isSupervisorAbsent => isAbsent && isApproved;
   
 }

@@ -884,9 +884,13 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Single day cell with long-press tooltip
+  /// Single day cell with long‐press tooltip
   Widget _buildCalendarDay(int day, int monthIndex) {
     final record = _getRecordForDay(day);
+
+    // Flags for styling & tooltip
+    final isSupervisorAbsent = record?.isSupervisorAbsent ?? false;
+    final isApproved = record?.isApproved ?? false;
     final isFuture = record?.isFutureDate ?? false;
     final now = DateTime.now();
     final isToday =
@@ -896,7 +900,19 @@ class _StudentAttendancePageBiometricState
         monthIndex == _selectedDate.month &&
         _selectedYear == now.year;
 
-    final baseColor = _getStatusColor(day);
+    // 1) Determine the base color (override to red for supervisor‐absent)
+    Color baseColor;
+    if (record == null) {
+      baseColor = Colors.grey;
+    } else if (record.isHoliday || record.isWeekend) {
+      baseColor = AppColors.blueStatus;
+    } else if (isSupervisorAbsent) {
+      baseColor = AppColors.redStatus;
+    } else {
+      baseColor = _getStatusColor(day);
+    }
+
+    // 2) Background & border
     final backgroundColor = isFuture
         ? Colors.grey.withOpacity(.15)
         : isSelected
@@ -908,13 +924,13 @@ class _StudentAttendancePageBiometricState
             ? Border.all(color: AppColors.primaryColor.withOpacity(.5))
             : null;
 
-    // prepare tooltip data
+    // 3) Tooltip content
     final inTime =
         (record?.inTime.isNotEmpty ?? false) ? record!.inTime : '--:--';
     final outTime =
         (record?.outTime.isNotEmpty ?? false) ? record!.outTime : '--:--';
-    final statusLabel = record?.message ?? '';
-    final holidayName = record?.holidayName ?? '';
+    final statusLabel =
+        isSupervisorAbsent ? 'Absent (supervisor)' : (record?.message ?? '');
 
     return JustTheTooltip(
       triggerMode: TooltipTriggerMode.longPress,
@@ -922,33 +938,30 @@ class _StudentAttendancePageBiometricState
       tailBaseWidth: 16,
       backgroundColor: AppColors.primaryColor,
       borderRadius: BorderRadius.circular(8),
-
-      // Constrain the entire tooltip content
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 200),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               if (record?.isHoliday ?? false) ...[
+                // Holiday row
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.beach_access,
                         size: 16, color: Colors.white.withOpacity(0.9)),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: Text(
-                        'Holiday: $holidayName',
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
+                      child: Text('Holiday: ${record!.reason}',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14)),
                     ),
                   ],
                 ),
               ] else if (record?.isWeekend ?? false) ...[
+                // Weekend row
                 Row(
                   children: [
                     Icon(Icons.weekend,
@@ -961,6 +974,7 @@ class _StudentAttendancePageBiometricState
                   ],
                 ),
               ] else ...[
+                // In / Out rows
                 Row(
                   children: [
                     Icon(Icons.login,
@@ -987,10 +1001,15 @@ class _StudentAttendancePageBiometricState
                   ],
                 ),
                 const SizedBox(height: 6),
+
+                // Status row
                 Row(
                   children: [
-                    Icon(Icons.info,
-                        size: 16, color: Colors.white.withOpacity(0.9)),
+                    Icon(
+                      isSupervisorAbsent ? Icons.error : Icons.info,
+                      size: 16,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text('Status: $statusLabel',
@@ -999,12 +1018,30 @@ class _StudentAttendancePageBiometricState
                     ),
                   ],
                 ),
+
+                // Approved-on (for any approved record)
+                if (isApproved) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.event_available,
+                          size: 16, color: Colors.white.withOpacity(0.9)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text('Approved on: ${record!.duration}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 14)),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ],
           ),
         ),
       ),
 
+      // 4) Calendar cell itself
       child: GestureDetector(
         onTap: isFuture ? null : () => _onDayTapped(day),
         child: Container(
