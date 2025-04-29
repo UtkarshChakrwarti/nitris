@@ -41,6 +41,7 @@ class ApplicationCard extends StatelessWidget {
                   await LocalStorageService.getLoginResponse();
               final employeeType =
                   loginResponse?.employeeType?.toLowerCase() ?? 'employee';
+              final empCode = loginResponse?.empCode ?? '1000000';
               // Navigation logic remains the same.
               if (application.label == 'Live Class') {
                 if (employeeType == 'student') {
@@ -61,7 +62,10 @@ class ApplicationCard extends StatelessWidget {
               }
               // Add more navigation logic for other applications as needed.
               // for a 'Biometric' application
-              else if (employeeType == 'student') {
+
+              else if (employeeType == 'student' && (empCode.startsWith('1'))) {
+                Navigator.of(context).pushNamed('/biometricPlaceholder');
+              } else if (employeeType == 'student') {
                 Navigator.of(context).pushNamed('/biometricAttendanceStudent');
               } else {
                 Navigator.of(context).pushNamed('/biometricAttendanceFaculty');
