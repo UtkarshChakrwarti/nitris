@@ -277,7 +277,7 @@ class ApiService {
   }) async {
     final uri = Uri.parse(
       'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance'
-      '?rollno=223CS3385&month=$month&year=$year',
+      '?rollno=$rollNo&month=$month&year=$year',
     );
 
     final response = await _sendRequest('GET', uri);
