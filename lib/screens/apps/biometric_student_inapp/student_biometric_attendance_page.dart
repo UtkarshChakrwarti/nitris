@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:just_the_tooltip/just_the_tooltip.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/attendance_record.dart';
-import 'package:nitris/core/models/student_attendance_summary.dart';
 import 'package:nitris/core/services/local/local_storage_service.dart';
+import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/screens/apps/biometric_student_inapp/widgets/attendance_app_bar.dart';
 import 'package:nitris/screens/apps/biometric_student_inapp/widgets/attendance_info_dialog.dart';
-import 'package:nitris/screens/apps/biometric_student_inapp/widgets/formatter.dart';
+import 'package:nitris/screens/apps/biometric_student_inapp/widgets/date_formatter.dart';
 import 'package:nitris/screens/apps/biometric_student_inapp/widgets/legend_item.dart';
 import 'package:nitris/screens/apps/biometric_student_inapp/widgets/stat_card.dart';
 
@@ -23,9 +23,11 @@ class StudentAttendancePageBiometric extends StatefulWidget {
 
 class _StudentAttendancePageBiometricState
     extends State<StudentAttendancePageBiometric> {
+  ApiService apiService = ApiService();
+
   // Student information
-  String _studentName = "Student";
-  String _rollNumber = "";
+  String _studentName = 'Student';
+  String _rollNumber = '';
 
   // Date and time state
   DateTime _selectedDate = DateTime.now();
@@ -61,52 +63,35 @@ class _StudentAttendancePageBiometricState
   bool _isInitialLoading = false;
   bool _isCalendarLoading = false;
   bool _hasNetworkError = false;
-  // ignore: unused_field
+  // ignore: unused_field, prefer_final_fields
   String _errorMessage = '';
 
   // Data store
   List<AttendanceRecord> _attendanceRecords = [];
 
-  // HTTP client for better connection management
-  late http.Client _httpClient;
-
-  // Debouncer for network requests
   Timer? _debounceTimer;
+
+  // Avatar cache
+  Uint8List? _cachedAvatarImage;
+  bool _avatarLoadAttempted = false;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize HTTP client
-    _httpClient = http.Client();
-
-    // Set current month
     _selectedMonth = months[DateTime.now().month - 1];
-
-    // Generate years for dropdown (current year and 4 previous years)
     years = List.generate(5, (i) => DateTime.now().year - i);
-
-    // Only load student data once, then fetch attendance data
     _loadStudentData();
     _loadAvatarImage();
   }
 
   @override
   void dispose() {
-    // Clean up resources
-    _httpClient.close();
     _debounceTimer?.cancel();
     super.dispose();
   }
 
-  // Add these properties to the _StudentAttendancePageBiometricState class:
-  Uint8List? _cachedAvatarImage;
-  bool _avatarLoadAttempted = false;
-
-// Add this method to your class to load the avatar once:
   Future<void> _loadAvatarImage() async {
     if (_avatarLoadAttempted) return;
-
     _avatarLoadAttempted = true;
     try {
       final avatarBase64 = await LocalStorageService.getCurrentUserAvatar();
@@ -117,89 +102,48 @@ class _StudentAttendancePageBiometricState
           });
         }
       }
-    } catch (e) {
-      debugPrint('Error loading avatar image: $e');
-    }
+    } catch (_) {}
   }
 
-  /// Load student data from local storage
   Future<void> _loadStudentData() async {
     try {
       final empcode = await LocalStorageService.getCurrentUserEmpCode();
       final fullName = await LocalStorageService.getCurrentUserFullName();
-
       if (!mounted) return;
-
       setState(() {
-        _rollNumber = empcode ?? "";
+        _rollNumber = empcode ?? '';
         _studentName = fullName != null
             ? fullName.replaceAll(RegExp(r'\s+'), ' ').trim()
-            : "Student";
+            : 'Student';
       });
-
-      // Fetch attendance data after student data is loaded
-      _fetchInitialData();
-    } catch (e) {
-      debugPrint('Error loading student data: $e');
-
+    } catch (_) {
       if (!mounted) return;
-
       setState(() {
-        _rollNumber = "";
-        _studentName = "Student";
+        _rollNumber = '';
+        _studentName = 'Student';
       });
-
-      // Still try to fetch attendance data even if student data fails
+    } finally {
       _fetchInitialData();
     }
   }
 
-  /// Fetch initial attendance data
   Future<void> _fetchInitialData() async {
-    // Prevent multiple concurrent requests
     if (_isInitialLoading) return;
-
     setState(() {
       _isInitialLoading = true;
-      _errorMessage = '';
       _hasNetworkError = false;
     });
 
     final monthIdx = months.indexOf(_selectedMonth) + 1;
-    final url =
-        'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance?rollno=$_rollNumber&month=$monthIdx&year=$_selectedYear';
 
     try {
-      // Use dedicated HTTP client with proper timeout
-      final res = await _httpClient.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw Exception(
-              'Connection timed out. Please check your internet connection and try again.');
-        },
-      );
-
-      // Handle HTTP status codes
-      if (res.statusCode != 200) {
-        if (res.statusCode >= 500) {
-          throw Exception('Server error. Please try again later.');
-        } else if (res.statusCode == 404) {
-          throw Exception('Data not found for the selected month and year.');
-        } else {
-          throw Exception('HTTP Error ${res.statusCode}. Please try again.');
-        }
-      }
-
-      // Parse response data
-      final summary = StudentAttendanceSummary.fromJson(
-        json.decode(res.body) as Map<String, dynamic>,
-      );
+      final summary = await ApiService().getStudentAttendance(
+          rollNo: _rollNumber, month: monthIdx, year: _selectedYear);
 
       final stats = _calculateStats(summary.records);
       final todayRec = _getTodayRecord(summary.records);
 
       if (!mounted) return;
-
       setState(() {
         _attendanceRecords = summary.records;
         presentCount = stats['present']!;
@@ -207,95 +151,42 @@ class _StudentAttendancePageBiometricState
         leaveAvailed = summary.leaveAvailed;
         leaveRemaining = summary.leaveRemaining;
 
-        // Update selected date based on current month/year
         if (DateTime.now().month == monthIdx &&
             DateTime.now().year == _selectedYear) {
           _selectedDate = DateTime.now();
         } else {
-          // Or select the first day with attendance data
-          final firstValidDay =
+          final firstDay =
               summary.records.isNotEmpty ? summary.records.first.day : 1;
-          _selectedDate = DateTime(_selectedYear, monthIdx, firstValidDay);
+          _selectedDate = DateTime(_selectedYear, monthIdx, firstDay);
         }
 
-        // Update time display
         _timeIn = todayRec.inTime.isNotEmpty ? todayRec.inTime : '--:--';
         _timeOut = todayRec.outTime.isNotEmpty ? todayRec.outTime : '--:--';
-        _hasNetworkError = false;
       });
     } catch (e) {
       if (!mounted) return;
-
-      // Create a user-friendly error message
-      String errorMsg;
-      if (e.toString().contains('SocketException') ||
-          e.toString().contains('Connection refused') ||
-          e.toString().contains('timed out') ||
-          e.toString().contains('Failed host lookup') ||
-          e.toString().contains('Network is unreachable')) {
-        errorMsg =
-            'No internet connection. Please check your network and try again.';
-      } else {
-        errorMsg = 'Failed to load attendance data: ${e.toString()}';
-      }
-
-      setState(() {
-        _errorMessage = errorMsg;
-        _hasNetworkError = true;
-      });
-
-      // Show error message
-      _showErrorSnackBar(errorMsg, _fetchInitialData);
+      final msg = e.toString().contains('SocketException')
+          ? 'No internet connection. Please check your network and try again.'
+          : 'Failed to load attendance data: ${e.toString()}';
+      setState(() => _hasNetworkError = true);
+      _showErrorSnackBar(msg, _fetchInitialData);
     } finally {
-      // Always clear loading state when done
-      if (mounted) {
-        setState(() => _isInitialLoading = false);
-      }
+      if (mounted) setState(() => _isInitialLoading = false);
     }
   }
 
-  /// Fetch calendar data when month/year changes
   Future<void> _fetchCalendarData() async {
     if (_isCalendarLoading) return;
-
-    setState(() {
-      _isCalendarLoading = true;
-    });
+    setState(() => _isCalendarLoading = true);
 
     final monthIdx = months.indexOf(_selectedMonth) + 1;
-    final url =
-        'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance?rollno=$_rollNumber&month=$monthIdx&year=$_selectedYear';
-
     try {
-      // Use dedicated HTTP client
-      final res = await _httpClient.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw Exception(
-              'Connection timed out. Please check your internet connection and try again.');
-        },
-      );
-
-      // Handle HTTP status codes
-      if (res.statusCode != 200) {
-        if (res.statusCode >= 500) {
-          throw Exception('Server error. Please try again later.');
-        } else if (res.statusCode == 404) {
-          throw Exception('Data not found for the selected month and year.');
-        } else {
-          throw Exception('HTTP Error ${res.statusCode}. Please try again.');
-        }
-      }
-
-      // Parse response data
-      final summary = StudentAttendanceSummary.fromJson(
-        json.decode(res.body) as Map<String, dynamic>,
-      );
+      final summary = await ApiService().getStudentAttendance(
+          rollNo: _rollNumber, month: monthIdx, year: _selectedYear);
 
       final stats = _calculateStats(summary.records);
 
       if (!mounted) return;
-
       setState(() {
         _attendanceRecords = summary.records;
         presentCount = stats['present']!;
@@ -303,52 +194,30 @@ class _StudentAttendancePageBiometricState
         leaveAvailed = summary.leaveAvailed;
         leaveRemaining = summary.leaveRemaining;
 
-        // Update selected date if we have data
         if (summary.records.isNotEmpty) {
-          final firstValidDay = summary.records.first.day;
-          _selectedDate = DateTime(_selectedYear, monthIdx, firstValidDay);
-
-          // Update time display for selected date
-          final record = _getRecordForDay(firstValidDay);
-          _timeIn =
-              record?.inTime.isNotEmpty ?? false ? record!.inTime : '--:--';
+          final firstDay = summary.records.first.day;
+          _selectedDate = DateTime(_selectedYear, monthIdx, firstDay);
+          final rec = _getRecordForDay(firstDay);
+          _timeIn = (rec?.inTime.isNotEmpty ?? false) ? rec!.inTime : '--:--';
           _timeOut =
-              record?.outTime.isNotEmpty ?? false ? record!.outTime : '--:--';
+              (rec?.outTime.isNotEmpty ?? false) ? rec!.outTime : '--:--';
         }
 
         _hasNetworkError = false;
       });
     } catch (e) {
       if (!mounted) return;
-
-      // Create a user-friendly error message
-      String errorMsg;
-      if (e.toString().contains('SocketException') ||
-          e.toString().contains('Connection refused') ||
-          e.toString().contains('timed out') ||
-          e.toString().contains('Failed host lookup') ||
-          e.toString().contains('Network is unreachable')) {
-        errorMsg = 'Network error. Calendar data could not be loaded.';
-      } else {
-        errorMsg = 'Failed to update calendar data: ${e.toString()}';
-      }
-
-      setState(() {
-        _hasNetworkError = true;
-        _errorMessage = errorMsg;
-      });
-
-      // Show a toast notification for calendar errors
-      _showErrorSnackBar(errorMsg, _fetchCalendarData,
+      final msg = e.toString().contains('SocketException')
+          ? 'Network error. Calendar data could not be loaded.'
+          : 'Failed to update calendar data: ${e.toString()}';
+      setState(() => _hasNetworkError = true);
+      _showErrorSnackBar(msg, _fetchCalendarData,
           duration: const Duration(seconds: 3));
     } finally {
-      if (mounted) {
-        setState(() => _isCalendarLoading = false);
-      }
+      if (mounted) setState(() => _isCalendarLoading = false);
     }
   }
 
-  /// Show error snackbar with retry option
   void _showErrorSnackBar(String message, VoidCallback onRetry,
       {Duration? duration}) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -369,12 +238,8 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Full page refresh using the refresh button
   void _refreshData() {
-    // Cancel any pending timer
     _debounceTimer?.cancel();
-
-    // Show a loading indicator
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -390,31 +255,22 @@ class _StudentAttendancePageBiometricState
       ),
     );
 
-    // Reset to current month/year
     setState(() {
       _selectedDate = DateTime.now();
       _selectedMonth = months[DateTime.now().month - 1];
       _selectedYear = DateTime.now().year;
     });
 
-    // Add a small delay to ensure UI updates first
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      _fetchInitialData();
-    });
+    _debounceTimer =
+        Timer(const Duration(milliseconds: 300), _fetchInitialData);
   }
 
-  /// Called when month or year changes in dropdowns
   void _onMonthYearChanged() {
-    // Cancel any pending timer
     _debounceTimer?.cancel();
-
-    // Add a small delay to prevent multiple rapid requests
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      _fetchCalendarData();
-    });
+    _debounceTimer =
+        Timer(const Duration(milliseconds: 300), _fetchCalendarData);
   }
 
-  /// Get record for today
   AttendanceRecord _getTodayRecord(List<AttendanceRecord> records) {
     try {
       return records.firstWhere(
@@ -426,17 +282,15 @@ class _StudentAttendancePageBiometricState
     }
   }
 
-  /// Calculate present/absent stats
   Map<String, int> _calculateStats(List<AttendanceRecord> recs) {
-    int present = 0, absent = 0;
-    for (var record in recs) {
-      if (record.isPresent) present++;
-      if (record.isAbsent) absent++;
+    var pres = 0, abs = 0;
+    for (var r in recs) {
+      if (r.isPresent) pres++;
+      if (r.isAbsent) abs++;
     }
-    return {'present': present, 'absent': absent};
+    return {'present': pres, 'absent': abs};
   }
 
-  /// Get record for specific day
   AttendanceRecord? _getRecordForDay(int day) {
     try {
       return _attendanceRecords.firstWhere((r) => r.day == day);
@@ -445,7 +299,6 @@ class _StudentAttendancePageBiometricState
     }
   }
 
-  /// Get status icon for calendar
   IconData _getStatusIcon(int day) {
     final record = _getRecordForDay(day);
     if (record == null) return Icons.help_outline;
@@ -456,31 +309,54 @@ class _StudentAttendancePageBiometricState
     return Icons.help_outline;
   }
 
-  /// Get status color for calendar
   Color _getStatusColor(int day) {
     final record = _getRecordForDay(day);
     if (record == null) return Colors.grey;
-    if (record.isHoliday || record.isWeekend) return AppColors.blueStatus;
+
+    // 1. Holiday / Weekend
+    if (record.isHoliday || record.isWeekend) {
+      return AppColors.blueStatus;
+    }
+
+    // 2. if one signature
+    if (record.message == 'One Signature') {
+      return AppColors.cyanStatus;
+    }
+
+    // 2. Approval Pending
+    if (record.message == 'Approval Pending') {
+      final hasIn = record.inTime.isNotEmpty;
+      final hasOut = record.outTime.isNotEmpty;
+      // both in+out → fully approved (purple)
+      if (hasIn && hasOut) {
+        return AppColors.purpleStatus;
+      }
+      // only one of the two → one signature (cyan)
+      return AppColors.cyanStatus;
+    }
+
+    // 3. Normal Present / Absent
     if (record.isPresent) return AppColors.greenStatus;
     if (record.isAbsent) return AppColors.yellowStatus;
+
+    // fallback
     return Colors.grey;
   }
 
-  /// Handle day tapped in calendar
   void _onDayTapped(int day) {
     final monthIndex = months.indexOf(_selectedMonth) + 1;
     final record = _getRecordForDay(day);
     setState(() {
       _selectedDate = DateTime(_selectedYear, monthIndex, day);
-      _timeIn = record?.inTime.isNotEmpty ?? false ? record!.inTime : '--:--';
+      _timeIn = (record?.inTime.isNotEmpty ?? false) ? record!.inTime : '--:--';
       _timeOut =
-          record?.outTime.isNotEmpty ?? false ? record!.outTime : '--:--';
+          (record?.outTime.isNotEmpty ?? false) ? record!.outTime : '--:--';
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Initial loading state with no prior data
+    // loading or error screens...
     if (_isInitialLoading && _attendanceRecords.isEmpty) {
       return Scaffold(
         appBar: AttendanceAppBar(
@@ -489,7 +365,7 @@ class _StudentAttendancePageBiometricState
           onRefreshPressed: _refreshData,
           onInfoPressed: () => showDialog(
             context: context,
-            builder: (context) => AttendanceInfoDialog(),
+            builder: (_) => AttendanceInfoDialog(),
           ),
         ),
         body: const Center(
@@ -504,8 +380,6 @@ class _StudentAttendancePageBiometricState
         ),
       );
     }
-
-    // Network error with no prior data
     if (_hasNetworkError && _attendanceRecords.isEmpty) {
       return Scaffold(
         appBar: AttendanceAppBar(
@@ -514,18 +388,14 @@ class _StudentAttendancePageBiometricState
           onRefreshPressed: _refreshData,
           onInfoPressed: () => showDialog(
             context: context,
-            builder: (context) => AttendanceInfoDialog(),
+            builder: (_) => AttendanceInfoDialog(),
           ),
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.signal_wifi_off,
-                size: 64,
-                color: Colors.grey,
-              ),
+              const Icon(Icons.signal_wifi_off, size: 64, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
                 'No internet connection',
@@ -559,7 +429,7 @@ class _StudentAttendancePageBiometricState
       );
     }
 
-    // Main content view
+    // main content
     return Scaffold(
       appBar: AttendanceAppBar(
         title: 'Biometric Attendance',
@@ -567,7 +437,7 @@ class _StudentAttendancePageBiometricState
         onRefreshPressed: _refreshData,
         onInfoPressed: () => showDialog(
           context: context,
-          builder: (context) => AttendanceInfoDialog(),
+          builder: (_) => AttendanceInfoDialog(),
         ),
       ),
       body: Column(
@@ -580,12 +450,10 @@ class _StudentAttendancePageBiometricState
             child: RefreshIndicator(
               onRefresh: () async {
                 await _fetchInitialData();
-                return;
               },
-              color: AppColors.primaryColor, // Set spinner color to primary
+              color: AppColors.primaryColor,
               child: SingleChildScrollView(
-                physics:
-                    const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Column(
                   children: [
@@ -604,72 +472,139 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build user profile with name and roll number - improved version
-  Widget _buildProfileBlock() {
+  /// Helper for each leave tile
+  Widget _buildLeaveTile(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        color: color.withOpacity(.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w400, color: color)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryColor)),
+        ],
+      ),
+    );
+  }
+
+  /// Elegant profile block with 3‐line name and deeper shadow/gradient
+  Widget _buildProfileBlock() {
+    // converting in uppercase all letters
+    _studentName = _studentName.toUpperCase();
+
+    final parts = _studentName.split(' ');
+    final lines = <String>[];
+    if (parts.isNotEmpty) lines.add(parts[0]);
+    if (parts.length > 1) lines.add(parts[1]);
+    if (parts.length > 2) {
+      var third = parts[2];
+      if (parts.length > 3) third = third + '…';
+      lines.add(third);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 242, 234, 234),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.07),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: AppColors.secondaryColor.withOpacity(.08),
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: AppColors.primaryColor.withOpacity(.05),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Use cached avatar with larger size
-          _cachedAvatarImage != null
-              ? CircleAvatar(
-                  radius: 23, // Larger avatar
-                  backgroundColor: AppColors.primaryColor,
-                  backgroundImage: MemoryImage(_cachedAvatarImage!),
-                  onBackgroundImageError: (_, __) {
-                    debugPrint('Error displaying cached avatar image');
-                  },
-                )
-              : CircleAvatar(
-                  radius: 23, // Larger avatar
-                  backgroundColor: AppColors.primaryColor,
-                  child:
-                      const Icon(Icons.person, color: Colors.white, size: 32),
+          // ── AVATAR + ROLL ──
+          Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primaryColor, width: 1.5),
                 ),
-          const SizedBox(width: 16), // Wider spacing
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.primaryColor.withOpacity(.1),
+                  backgroundImage: _cachedAvatarImage != null
+                      ? MemoryImage(_cachedAvatarImage!)
+                      : null,
+                  child: _cachedAvatarImage == null
+                      ? const Icon(Icons.person,
+                          size: 28, color: AppColors.primaryColor)
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _rollNumber,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primaryColor,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(width: 18),
+
+          // ── NAME (3 rows) ──
           Expanded(
+            flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _studentName,
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(lines.length, (i) {
+                return Text(
+                  lines[i],
                   style: const TextStyle(
-                    fontSize: 16, // Slightly larger text
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textColor,
+                    color: AppColors.primaryColor,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                );
+              }),
+            ),
+          ),
+
+          const SizedBox(width: 18),
+
+          // ── LEAVE TILES (vertical) ──
+          Expanded(
+            flex: 3,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildLeaveTile(
+                  'Leave Availed',
+                  leaveAvailed.toString(),
+                  AppColors.darkGreen,
                 ),
-                const SizedBox(height: 4), // Add space between text
-                Row(
-                  children: [
-                    Icon(
-                      Icons.badge_outlined,
-                      size: 14,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _rollNumber,
-                      style: TextStyle(
-                        fontSize: 13, // Slightly larger text
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 10),
+                _buildLeaveTile(
+                  'Remaining Leaves',
+                  leaveRemaining.toString(),
+                  AppColors.darkRed,
                 ),
               ],
             ),
@@ -679,10 +614,8 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build daily status block with time in/out
+  /// Daily status block
   Widget _buildDailyStatusBlock() {
-    final dateLabel = Formatters.formatDateForDisplay(_selectedDate);
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -690,7 +623,7 @@ class _StudentAttendancePageBiometricState
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 3),
+          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 3)
         ],
       ),
       child: Column(
@@ -714,13 +647,7 @@ class _StudentAttendancePageBiometricState
                     color: AppColors.primaryColor,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    dateLabel,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
+                  FormattedDateLabel(date: _selectedDate),
                 ],
               ),
             ],
@@ -738,7 +665,7 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build monthly status block with stats and filters
+  /// Monthly status block (filters + Present/Absent)
   Widget _buildMonthlyStatusBlock() {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -747,21 +674,18 @@ class _StudentAttendancePageBiometricState
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 3),
+          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 3)
         ],
       ),
       child: Column(
         children: [
           const Align(
             alignment: Alignment.centerLeft,
-            child: Text(
-              'Monthly Status',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textColor,
-              ),
-            ),
+            child: Text('Monthly Status',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textColor)),
           ),
           const SizedBox(height: 12),
           Row(
@@ -772,86 +696,41 @@ class _StudentAttendancePageBiometricState
             ],
           ),
           const SizedBox(height: 12),
-          // Keep stats visible during loading, but show shimmer/skeleton effect
           _isCalendarLoading
               ? Opacity(
                   opacity: 0.6,
-                  child: Column(
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          StatCard(
-                            title: 'Present',
-                            value: '...',
-                            color: AppColors.greenStatus.withOpacity(0.5),
-                            icon: Icons.check_circle_outline,
-                          ),
-                          const SizedBox(width: 6),
-                          StatCard(
-                            title: 'Absent',
-                            value: '...',
-                            color: AppColors.yellowStatus.withOpacity(0.5),
-                            icon: Icons.cancel_outlined,
-                          ),
-                        ],
+                      StatCard(
+                        title: 'Present',
+                        value: '...',
+                        color: AppColors.greenStatus.withOpacity(.5),
+                        icon: Icons.check_circle_outline,
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          StatCard(
-                            title: 'Leave Availed',
-                            value: '...',
-                            color: AppColors.darkGreen.withOpacity(0.5),
-                            icon: Icons.event_busy,
-                          ),
-                          const SizedBox(width: 6),
-                          StatCard(
-                            title: 'Leave Remaining',
-                            value: '...',
-                            color: AppColors.darkRed.withOpacity(0.5),
-                            icon: Icons.event_available,
-                          ),
-                        ],
+                      const SizedBox(width: 6),
+                      StatCard(
+                        title: 'Absent',
+                        value: '...',
+                        color: AppColors.yellowStatus.withOpacity(.5),
+                        icon: Icons.cancel_outlined,
                       ),
                     ],
                   ),
                 )
-              : Column(
+              : Row(
                   children: [
-                    Row(
-                      children: [
-                        StatCard(
-                          title: 'Present',
-                          value: '$presentCount',
-                          color: AppColors.greenStatus,
-                          icon: Icons.check_circle_outline,
-                        ),
-                        const SizedBox(width: 6),
-                        StatCard(
-                          title: 'Absent',
-                          value: '$absentCount',
-                          color: AppColors.yellowStatus,
-                          icon: Icons.cancel_outlined,
-                        ),
-                      ],
+                    StatCard(
+                      title: 'Present',
+                      value: '$presentCount',
+                      color: AppColors.greenStatus,
+                      icon: Icons.check_circle_outline,
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        StatCard(
-                          title: 'Leave Availed',
-                          value: '$leaveAvailed',
-                          color: AppColors.darkGreen,
-                          icon: Icons.event_busy,
-                        ),
-                        const SizedBox(width: 6),
-                        StatCard(
-                          title: 'Leave Remaining',
-                          value: '$leaveRemaining',
-                          color: AppColors.darkRed,
-                          icon: Icons.event_available,
-                        ),
-                      ],
+                    const SizedBox(width: 6),
+                    StatCard(
+                      title: 'Absent',
+                      value: '$absentCount',
+                      color: AppColors.yellowStatus,
+                      icon: Icons.cancel_outlined,
                     ),
                   ],
                 ),
@@ -860,7 +739,7 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build calendar block
+  /// Calendar block
   Widget _buildCalendarBlock() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -868,7 +747,7 @@ class _StudentAttendancePageBiometricState
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 6),
+          BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 6)
         ],
       ),
       child: Column(
@@ -877,47 +756,19 @@ class _StudentAttendancePageBiometricState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '$_selectedMonth $_selectedYear',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.textColor,
-                ),
-              ),
+              Text('$_selectedMonth $_selectedYear',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.textColor)),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Icon(
-                    Icons.calendar_today,
-                    size: 14,
-                    color: AppColors.primaryColor,
-                  ),
+                  const Icon(Icons.calendar_today,
+                      size: 14, color: AppColors.primaryColor),
                   const SizedBox(width: 4),
-                  const Text(
-                    'Attendance Calendar',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(width: 12),
-                  // Calendar-specific refresh button
-                  _isCalendarLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.primaryColor),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: _fetchCalendarData,
-                          child: const Icon(
-                            Icons.refresh,
-                            size: 18,
-                            color: AppColors.primaryColor,
-                          ),
-                        ),
+                  const Text('Attendance Calendar',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                 ],
               ),
             ],
@@ -931,13 +782,9 @@ class _StudentAttendancePageBiometricState
                       children: [
                         const CircularProgressIndicator(),
                         const SizedBox(height: 16),
-                        Text(
-                          'Loading calendar data...',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
+                        Text('Loading calendar data...',
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 12)),
                       ],
                     ),
                   ),
@@ -948,7 +795,7 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build legend block
+  /// Legend block
   Widget _buildLegendBlock() {
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -969,7 +816,7 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build calendar view
+  /// Compact calendar view
   Widget _buildCompactCalendar() {
     final monthIndex = months.indexOf(_selectedMonth) + 1;
     final daysInMonth = DateTime(_selectedYear, monthIndex + 1, 0).day;
@@ -984,19 +831,11 @@ class _StudentAttendancePageBiometricState
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
-              const Icon(
-                Icons.wifi_off_rounded,
-                size: 32,
-                color: Colors.grey,
-              ),
+              const Icon(Icons.wifi_off_rounded, size: 32, color: Colors.grey),
               const SizedBox(height: 8),
-              Text(
-                'Calendar data unavailable',
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              Text('Calendar data unavailable',
+                  style: TextStyle(
+                      color: Colors.grey[700], fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: _fetchCalendarData,
@@ -1014,20 +853,14 @@ class _StudentAttendancePageBiometricState
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-              .map(
-                (day) => SizedBox(
+              .map((d) => SizedBox(
                   width: 25,
-                  child: Text(
-                    day,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-              )
+                  child: Text(d,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey))))
               .toList(),
         ),
         const SizedBox(height: 4),
@@ -1040,11 +873,10 @@ class _StudentAttendancePageBiometricState
             mainAxisSpacing: 3,
           ),
           itemCount: itemCount,
-          itemBuilder: (_, index) {
+          itemBuilder: (_, i) {
             final offset = firstWeekday - 1;
-            final day = index - offset + 1;
+            final day = i - offset + 1;
             if (day < 1 || day > daysInMonth) return const SizedBox();
-
             return _buildCalendarDay(day, monthIndex);
           },
         ),
@@ -1052,7 +884,7 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build calendar day cell
+  /// Single day cell with long-press tooltip
   Widget _buildCalendarDay(int day, int monthIndex) {
     final record = _getRecordForDay(day);
     final isFuture = record?.isFutureDate ?? false;
@@ -1062,7 +894,7 @@ class _StudentAttendancePageBiometricState
     final isSelected = !isFuture &&
         day == _selectedDate.day &&
         monthIndex == _selectedDate.month &&
-        _selectedYear == _selectedDate.year;
+        _selectedYear == now.year;
 
     final baseColor = _getStatusColor(day);
     final backgroundColor = isFuture
@@ -1076,42 +908,140 @@ class _StudentAttendancePageBiometricState
             ? Border.all(color: AppColors.primaryColor.withOpacity(.5))
             : null;
 
-    return GestureDetector(
-      onTap: isFuture ? null : () => _onDayTapped(day),
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(6),
-          border: border,
+    // prepare tooltip data
+    final inTime =
+        (record?.inTime.isNotEmpty ?? false) ? record!.inTime : '--:--';
+    final outTime =
+        (record?.outTime.isNotEmpty ?? false) ? record!.outTime : '--:--';
+    final statusLabel = record?.message ?? '';
+    final holidayName = record?.holidayName ?? '';
+
+    return JustTheTooltip(
+      triggerMode: TooltipTriggerMode.longPress,
+      tailLength: 10,
+      tailBaseWidth: 16,
+      backgroundColor: AppColors.primaryColor,
+      borderRadius: BorderRadius.circular(8),
+
+      // Constrain the entire tooltip content
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 200),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (record?.isHoliday ?? false) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.beach_access,
+                        size: 16, color: Colors.white.withOpacity(0.9)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Holiday: $holidayName',
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else if (record?.isWeekend ?? false) ...[
+                Row(
+                  children: [
+                    Icon(Icons.weekend,
+                        size: 16, color: Colors.white.withOpacity(0.9)),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text('Weekend',
+                          style: TextStyle(color: Colors.white, fontSize: 14)),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Icon(Icons.login,
+                        size: 16, color: Colors.white.withOpacity(0.9)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text('In: $inTime',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.logout,
+                        size: 16, color: Colors.white.withOpacity(0.9)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text('Out: $outTime',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.info,
+                        size: 16, color: Colors.white.withOpacity(0.9)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text('Status: $statusLabel',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 14)),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
         ),
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '$day',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: isFuture
-                    ? Colors.grey
-                    : isSelected
-                        ? AppColors.primaryColor
-                        : AppColors.textColor,
+      ),
+
+      child: GestureDetector(
+        onTap: isFuture ? null : () => _onDayTapped(day),
+        child: Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(6),
+            border: border,
+          ),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '$day',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isFuture
+                      ? Colors.grey
+                      : isSelected
+                          ? AppColors.primaryColor
+                          : AppColors.textColor,
+                ),
               ),
-            ),
-            Icon(
-              _getStatusIcon(day),
-              size: 10,
-              color: isFuture ? Colors.grey : baseColor,
-            ),
-          ],
+              Icon(
+                _getStatusIcon(day),
+                size: 10,
+                color: isFuture ? Colors.grey : baseColor,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// Build time card for time in/out
+  /// Time card for in/out
   Widget _buildTimeCard(String label, String value, Color color) {
     return Expanded(
       child: Container(
@@ -1124,21 +1054,18 @@ class _StudentAttendancePageBiometricState
           children: [
             Icon(Icons.access_time, size: 14, color: color),
             const SizedBox(width: 6),
-            Text(
-              '$label ',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-            ),
+            Text('$label ',
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(value,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
     );
   }
 
-  /// Build month dropdown selector
+  /// Month dropdown
   Widget _buildMonthDropdown() {
     return Expanded(
       child: Container(
@@ -1155,12 +1082,11 @@ class _StudentAttendancePageBiometricState
             isExpanded: true,
             icon: const Icon(Icons.keyboard_arrow_down, size: 16),
             items: months
-                .map((month) =>
-                    DropdownMenuItem(value: month, child: Text(month)))
+                .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                 .toList(),
-            onChanged: (value) {
-              if (value != null && value != _selectedMonth) {
-                setState(() => _selectedMonth = value);
+            onChanged: (v) {
+              if (v != null && v != _selectedMonth) {
+                setState(() => _selectedMonth = v);
                 _onMonthYearChanged();
               }
             },
@@ -1170,7 +1096,7 @@ class _StudentAttendancePageBiometricState
     );
   }
 
-  /// Build year dropdown selector
+  /// Year dropdown
   Widget _buildYearDropdown() {
     return Expanded(
       child: Container(
@@ -1187,12 +1113,11 @@ class _StudentAttendancePageBiometricState
             isExpanded: true,
             icon: const Icon(Icons.keyboard_arrow_down, size: 16),
             items: years
-                .map((year) =>
-                    DropdownMenuItem(value: year, child: Text('$year')))
+                .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
                 .toList(),
-            onChanged: (value) {
-              if (value != null && value != _selectedYear) {
-                setState(() => _selectedYear = value);
+            onChanged: (v) {
+              if (v != null && v != _selectedYear) {
+                setState(() => _selectedYear = v);
                 _onMonthYearChanged();
               }
             },

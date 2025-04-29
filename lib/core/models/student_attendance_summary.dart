@@ -1,5 +1,3 @@
-
-
 import 'package:nitris/core/models/attendance_record.dart';
 
 class StudentAttendanceSummary {

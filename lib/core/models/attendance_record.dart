@@ -1,6 +1,12 @@
 class AttendanceRecord {
-  final String date, inTime, outTime, duration, reason, message;
-  final bool isPartialAttendance, isLateRegistration;
+  final String date;
+  final String inTime;
+  final String outTime;
+  final String duration;
+  final String reason;
+  final String message;
+  final bool isPartialAttendance;
+  final bool isLateRegistration;
   
   AttendanceRecord({
     required this.date,
@@ -13,16 +19,18 @@ class AttendanceRecord {
     required this.message,
   });
   
-  factory AttendanceRecord.fromJson(Map<String, dynamic> json) => AttendanceRecord(
-    date: json['date'] ?? '',
-    inTime: json['inTime'] ?? '',
-    outTime: json['outTime'] ?? '',
-    duration: json['duration'] ?? '',
-    reason: json['reason'] ?? '',
-    isPartialAttendance: json['isPartialAttendance'] ?? false,
-    isLateRegistration: json['isLateRegistration'] ?? false,
-    message: json['message'] ?? '',
-  );
+  factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    return AttendanceRecord(
+      date: json['date'] ?? '',
+      inTime: json['inTime'] ?? '',
+      outTime: json['outTime'] ?? '',
+      duration: json['duration'] ?? '',
+      reason: json['reason'] ?? '',
+      isPartialAttendance: json['isPartialAttendance'] ?? false,
+      isLateRegistration: json['isLateRegistration'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
   
   factory AttendanceRecord.empty() => AttendanceRecord(
     date: '',
@@ -35,10 +43,21 @@ class AttendanceRecord {
     message: '',
   );
   
+  /// Extract day number from the date string "YYYY.MM.DD"
   int get day => int.tryParse(date.split('.').last) ?? 0;
+  
   bool get isWeekend => message == 'Weekend';
-  bool get isHoliday => message == 'Holiday';
+  
+  /// Only true when message=="Holiday" *and* reason is non-empty
+  bool get isHoliday => message == 'Holiday' && reason.isNotEmpty;
+  
+  /// Returns the holiday name (e.g. "Good Friday"), or null otherwise
+  String? get holidayName => isHoliday ? reason : null;
+  
   bool get isPresent => message == 'Present';
   bool get isAbsent => message == 'Absent';
   bool get isFutureDate => message == 'Date is more than current date';
+
+  bool get isOneSignature => message =='One Signature';
+  
 }
