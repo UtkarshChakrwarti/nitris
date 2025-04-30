@@ -897,8 +897,7 @@ class _StudentAttendancePageBiometricState
         day == now.day && monthIndex == now.month && _selectedYear == now.year;
     final isSelected = !isFuture &&
         day == _selectedDate.day &&
-        monthIndex == _selectedDate.month &&
-        _selectedYear == now.year;
+        monthIndex == _selectedDate.month;
 
     // 1) Determine the base color (override to red for supervisor‐absent)
     Color baseColor;
@@ -934,10 +933,12 @@ class _StudentAttendancePageBiometricState
 
     return JustTheTooltip(
       triggerMode: TooltipTriggerMode.longPress,
+      preferredDirection: AxisDirection.up,
       tailLength: 10,
       tailBaseWidth: 16,
       backgroundColor: AppColors.primaryColor,
       borderRadius: BorderRadius.circular(8),
+       margin: const EdgeInsets.all(8), 
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 200),
         child: Padding(
