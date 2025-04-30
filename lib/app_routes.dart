@@ -6,6 +6,7 @@ import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/update/contacts_up
 import 'package:nitris/screens/apps/hello_nitr_inapp/main_screen/home_screen.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/live_attendance_home/attendance_home_screen.dart';
 import 'package:nitris/screens/apps/placeholder_pages/biometric_placeholder.dart';
+import 'package:nitris/screens/apps/placeholder_pages/file-tracking.dart';
 import 'package:nitris/screens/apps/students_live_attendance_inapp/student_attendance_home_screen.dart';
 import 'package:nitris/screens/launch_screen/dashboard.dart';
 import 'package:nitris/screens/login/login_screen.dart';
@@ -61,6 +62,9 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   //Biometric placeholder page
   '/biometricPlaceholder': (context) => const NoAccessBiometricAttendance(),
+
+  //File tracking placeholder page
+  '/fileTrackingPlaceholder': (context) => const FileTrackingInDevelopment(),
 
 
   //Custom error page

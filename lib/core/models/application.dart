@@ -66,6 +66,12 @@ Future<List<Application>> getApplications() async {
         subtitle: 'NITR',
         color: AppColors.primaryColor,
       ),
+       const Application(
+        icon: 'assets/images/file-tracking.png', // You might need to add this asset
+        label: 'File',
+        subtitle: ' Tracking',
+        color: AppColors.primaryColor,
+      )
     ];
   }
 }
