@@ -9,14 +9,15 @@ class InfoButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.info_outline),
-      onPressed: () => _showInfoDialog(context),
       tooltip: 'How to get app code',
-      color: AppColors.primaryColor
+      color: AppColors.primaryColor,
+      onPressed: () => _showInfoDialog(context),
     );
   }
 
   void _showInfoDialog(BuildContext context) {
-    final Uri nitrisUrl = Uri.parse('https://eapplication.nitrkl.ac.in/nitris/Login.aspx');
+    final Uri nitrisUrl =
+        Uri.parse('https://eapplication.nitrkl.ac.in/nitris/Login.aspx');
 
     showDialog(
       context: context,
@@ -25,13 +26,13 @@ class InfoButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
+                // Header -----------------------------------------------------
                 Row(
                   children: [
                     Icon(Icons.app_shortcut, color: AppColors.primaryColor),
@@ -42,79 +43,87 @@ class InfoButton extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.primaryColor
                         ),
                       ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, size: 20),
-                      onPressed: () => Navigator.of(context).pop(),
                       padding: EdgeInsets.zero,
+                      color: AppColors.primaryColor,
                       constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
                 const Divider(),
                 const SizedBox(height: 8),
-                
-                // Instructions
+
+                // Instructions ----------------------------------------------
                 const Text(
                   'To get your app code, follow these steps:',
                   style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 16),
-                
-                // Steps
+
+                // Steps ------------------------------------------------------
                 _buildStep(1, 'Log in to the NITRis Web Portal', Icons.login),
-                
-                // Link - no underline but clearly a link
                 Padding(
                   padding: const EdgeInsets.only(left: 32, bottom: 12),
                   child: TextButton.icon(
                     onPressed: () => _launchUrl(nitrisUrl),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primaryColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    icon: const Icon(Icons.open_in_new, size: 16),
+                    icon: const Icon(Icons.open_in_new,
+                        size: 16, color: AppColors.primaryColor),
                     label: const Text('Open NITRIS Portal'),
                   ),
                 ),
-                
-                _buildStep(2, 'Click on Academic option from the top menu', Icons.menu_book),
+                _buildStep(
+                    2,
+                    'Click on Academic option from the top menu',
+                    Icons.menu_book),
                 _buildStep(3, 'Select Account Settings', Icons.settings),
-                _buildStep(4, 'Click on NITRis App Code in the left navigation', Icons.code),
-                
+                _buildStep(
+                    4,
+                    'Click on NITRis App Code in the left navigation',
+                    Icons.code),
+
                 const SizedBox(height: 16),
-                
-                // Time Notice - warning style
+
+                // Time notice -----------------------------------------------
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                  color: AppColors.lightSecondaryColor, 
-                  borderRadius: BorderRadius.circular(8),
+                    color: AppColors.lightSecondaryColor,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                  children: [
-                    Icon(Icons.warning_amber_outlined, size: 20, color: Colors.red[800]),
-                    const SizedBox(width: 8),
-                    Expanded(
-                    child: Text(
-                      'The app code is valid for 120 seconds only.',
-                      style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: Colors.red[900],
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_outlined,
+                          size: 20, color: AppColors.primaryColor),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'The app code is valid for 120 seconds only.',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            // keep text color as warning style – not an icon
+                          ),
+                        ),
                       ),
-                    ),
-                    ),
-                  ],
+                    ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
-                // Button - simplified
+
+                // Close button ----------------------------------------------
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -133,6 +142,7 @@ class InfoButton extends StatelessWidget {
     );
   }
 
+  // Step-row helper -------------------------------------------------------------
   Widget _buildStep(int number, String text, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
@@ -161,15 +171,9 @@ class InfoButton extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                Icon(
-                  icon, 
-                  size: 16,
-                  color: AppColors.primaryColor,
-                ),
+                Icon(icon, size: 16, color: AppColors.primaryColor),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(text),
-                ),
+                Expanded(child: Text(text)),
               ],
             ),
           ),

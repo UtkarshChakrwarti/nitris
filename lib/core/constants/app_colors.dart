@@ -16,12 +16,12 @@ class AppColors {
   static const lightGreen = Color.fromARGB(255, 204, 255, 204); // Light Green
   static const lightRed = Color.fromARGB(255, 255, 204, 204); // Light Red
 
-    // Status colors
-  static const yellowStatus = Color.fromARGB(255, 235, 209, 131);
-  static const blueStatus = Color.fromARGB(255, 144, 203, 249);
-  static const greenStatus = Color.fromARGB(255, 166, 215, 168);
-  static const redStatus = Color.fromARGB(255, 250, 161, 155);
-  static const purpleStatus = Color.fromARGB(255, 206, 147, 216);
-  static const cyanStatus = Color.fromARGB(255, 128, 222, 234);
+  // Status colors (Material 400 shades for extra pop)
+  static const yellowStatus = Color(0xFFFFCA28); // Amber 400
+  static const blueStatus   = Color(0xFF42A5F5); // Blue 400 (Holiday)
+  static const greenStatus  = Color(0xFF66BB6A); // Green 400
+  static const redStatus    = Color(0xFFEF5350); // Red 400
+  static const purpleStatus = Color(0xFF7E57C2); // Deep Purple 400 (Full Approval Pending)
+  static const cyanStatus   = Color(0xFF26C6DA); // Cyan 400 (One Signature)
   
 }

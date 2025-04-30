@@ -5,116 +5,58 @@ import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/update/contact_upd
 import 'package:nitris/screens/launch_screen/theme/launch_app_theme.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 
+/// A reusable card widget that displays an application icon + label
+/// and navigates to the correct route when tapped.
 class ApplicationCard extends StatelessWidget {
   final Application application;
 
-  const ApplicationCard({Key? key, required this.application})
-      : super(key: key);
+  const ApplicationCard({Key? key, required this.application}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Use LayoutBuilder to adjust the icon size based on available width.
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate icon size as a percentage of the available width.
         final iconSize = constraints.maxWidth * 0.45;
 
-        // Icon widget with rounded corners.
-        final Widget iconWidget = ClipRRect(
-          borderRadius: BorderRadius.circular(16.0),
+        final iconWidget = ClipRRect(
+          borderRadius: BorderRadius.circular(16),
           child: Image.asset(
             application.icon,
             width: iconSize,
             height: iconSize,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Icon(Icons.apps, size: iconSize, color: Colors.grey);
-            },
+            errorBuilder: (_, __, ___) =>
+                Icon(Icons.apps, size: iconSize, color: Colors.grey),
           ),
         );
 
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () async {
-              final loginResponse =
-                  await LocalStorageService.getLoginResponse();
-              final employeeType =
-                  loginResponse?.employeeType?.toLowerCase() ?? 'employee';
-              // Navigation logic remains the same.
-              if (application.label == 'Live Class') {
-                if (employeeType == 'student') {
-                  Navigator.of(context).pushNamed('/studentAttendance');
-                } else {
-                  Navigator.of(context).pushNamed('/attendanceHome');
-                }
-              } else if (application.label == 'Hello') {
-                ContactsUpdateController()
-                    .hasExistingContacts()
-                    .then((hasContacts) {
-                  if (hasContacts) {
-                    Navigator.of(context).pushNamed('/helloNITRHome');
-                  } else {
-                    Navigator.of(context).pushNamed('/contactsUpdate');
-                  }
-                });
-              }
-              // Add more navigation logic for other applications as needed.
-              // for a 'Biometric' application
-              else if (employeeType == 'student') {
-                Navigator.of(context).pushNamed('/biometricAttendanceStudent');
-              } else {
-                Navigator.of(context).pushNamed('/biometricAttendanceFaculty');
-              }
-            },
+            onTap: () => _handleTap(context),
             borderRadius: BorderRadius.circular(16),
             splashColor: AppColors.lightSecondaryColor,
             highlightColor: AppColors.lightSecondaryColor.withOpacity(0.5),
             child: Ink(
               decoration: BoxDecoration(
-                // Slightly darker background than pure white.
                 color: const Color(0xFFF8F8F8),
                 borderRadius: BorderRadius.circular(16),
-                // Two-layer shadow for a pronounced popping effect.
-                // boxShadow: [
-                //   BoxShadow(
-                //     color: Colors.black.withOpacity(0.2),
-                //     blurRadius: 6,
-                //     offset: const Offset(0, 4),
-                //   ),
-                //   BoxShadow(
-                //     color: Colors.black.withOpacity(0.05),
-                //     blurRadius: 2,
-                //     spreadRadius: 1,
-                //     offset: const Offset(0, 0),
-                //   ),
-                // ],
               ),
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               child: Column(
-                mainAxisAlignment:
-                    MainAxisAlignment.center, // Vertically center content.
+                mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Icon container without an outline.
                   Ink(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      // boxShadow: [
-                      //   BoxShadow(
-                      //     color: Colors.black.withOpacity(0.05),
-                      //     blurRadius: 4,
-                      //     offset: const Offset(0, 2),
-                      //   ),
-                      // ],
                     ),
                     padding: const EdgeInsets.all(8),
                     child: iconWidget,
                   ),
                   const SizedBox(height: 6),
-                  // Application label with slightly smaller text.
                   Text(
                     application.label,
                     style: LaunchAppTheme.bodyTextStyle.copyWith(
@@ -148,5 +90,51 @@ class ApplicationCard extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Determines the correct route based on [application.label] and user info,
+  /// then navigates exactly once.
+  Future<void> _handleTap(BuildContext context) async {
+    final loginResponse = await LocalStorageService.getLoginResponse();
+    final employeeType = loginResponse?.employeeType?.toLowerCase() ?? 'employee';
+    final empCode = loginResponse?.empCode ?? '1000000';
+
+    String? route;
+
+    switch (application.label) {
+      case 'Live Class':
+        route = employeeType == 'student'
+            ? '/studentAttendance'
+            : '/attendanceHome';
+        break;
+
+      case 'Hello':
+        final hasContacts =
+            await ContactsUpdateController().hasExistingContacts();
+        route = hasContacts ? '/helloNITRHome' : '/contactsUpdate';
+        break;
+
+      case 'Biometric':
+        if (employeeType == 'student') {
+          route = empCode.startsWith('1')
+              ? '/biometricPlaceholder'
+              : '/biometricAttendanceStudent';
+        } else {
+          route = '/biometricAttendanceFaculty';
+        }
+        break;
+
+      case 'File':
+        route = '/fileTrackingPlaceholder';
+        break;
+
+      default:
+        // Handle unknown applications if necessary (e.g. show a SnackBar).
+        route = null;
+    }
+
+    if (route != null && context.mounted) {
+      Navigator.of(context).pushNamed(route);
+    }
   }
 }

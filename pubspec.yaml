@@ -1,7 +1,7 @@
 name: nitris
 description: "A new flutter project for nit students."
 publish_to: 'none'
-version: 2.0.1+0
+version: 2.0.2+1
 environment:
   sdk: ^3.5.4
 
@@ -44,6 +44,7 @@ dependencies:
   package_info_plus: ^8.3.0
   vibration: ^3.1.3
   no_screenshot: ^0.3.1
+  just_the_tooltip: ^0.0.12
 
 dev_dependencies:
   flutter_test:
@@ -75,3 +76,4 @@ flutter:
   - assets/images/m.png
   - assets/images/biometric.png
   - assets/images/cal.png
+  - assets/images/file-tracking.png

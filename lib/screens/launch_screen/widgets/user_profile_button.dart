@@ -1,105 +1,139 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:nitris/controllers/user_profile_controller.dart';
 import 'package:nitris/core/models/user.dart';
 import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:nitris/core/utils/dialogs_and_prompts.dart';
-import 'package:nitris/core/utils/image_validator.dart';
 import 'package:nitris/screens/launch_screen/theme/launch_app_theme.dart';
 import 'package:nitris/screens/launch_screen/widgets/user_profile_popup.dart';
 
 class UserProfileButton extends StatefulWidget {
-  const UserProfileButton({super.key});
+  const UserProfileButton({Key? key}) : super(key: key);
 
   @override
-  _UserProfileButtonState createState() => _UserProfileButtonState();
+  State<UserProfileButton> createState() => _UserProfileButtonState();
 }
 
 class _UserProfileButtonState extends State<UserProfileButton> {
-  User? _loggedInUser; // Make the user nullable
+  User? _user;
+  Uint8List? _avatarBytes;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadLoggedInUserDetails();
+    _initUser();
   }
 
-  // Load user details including first name and avatar
-  Future<void> _loadLoggedInUserDetails() async {
+  Future<void> _initUser() async {
     try {
       final user = await LocalStorageService.getCurrentUser();
       if (user != null) {
+        // decode Base-64 string (strip data URI prefix if present)
+        final raw = user.photo ?? '';
+        final base64Str = raw.contains(',') ? raw.split(',').last : raw;
+        Uint8List? bytes;
+        try {
+          final decoded = base64Decode(base64Str);
+          if (decoded.isNotEmpty) bytes = decoded;
+        } catch (_) {
+          bytes = null;
+        }
+
         setState(() {
-          _loggedInUser = user;
+          _user = user;
+          _avatarBytes = bytes;
         });
       }
     } catch (e) {
-      debugPrint('Error loading user information: $e');
+      debugPrint('Failed to load user: $e');
+    } finally {
+      setState(() => _loading = false);
     }
   }
 
-  // Dummy function for button press
-  void _onButtonClick(String value) {
-    if (value == "My Profile") {
-      _showUserProfilePopup();
-    } else if (value == "Deregister and Log Out") {
-      LocalStorageService.getCurrentUser().then((user) {
-        DialogsAndPrompts.showDeRegisterDeviceDialog(context, user!.empCode!);
-      });
-    } else if (value == "Log Out") {
-      DialogsAndPrompts.showLogoutConfirmationDialog(
-              context, _loggedInUser!.empCode!)
-          .then((shouldExit) async {
-        if (shouldExit != null && shouldExit) {
-          final userController = UserProfileController();
-          await userController.logout(context);
-        }
-      });
-    } else if (value == "Privacy Policy") {
-      Navigator.pushNamed(context, '/privacyPolicy');
+  void _onMenuSelected(String choice) {
+    switch (choice) {
+      case 'My Profile':
+        _showProfilePopup();
+        break;
+      case 'Privacy Policy':
+        Navigator.pushNamed(context, '/privacyPolicy');
+        break;
+      case 'Log Out':
+        _confirmLogout();
+        break;
+      case 'Deregister and Log Out':
+        _deregister();
+        break;
     }
   }
 
-  void _showUserProfilePopup() {
+  void _showProfilePopup() {
+    if (_user == null) return;
+    final fullName = [
+      _user!.firstName,
+      _user!.middleName,
+      _user!.lastName,
+    ].where((s) => s != null && s.isNotEmpty).join(' ');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => UserProfilePopup(
-        userName: [
-          _loggedInUser?.firstName,
-          _loggedInUser?.middleName,
-          _loggedInUser?.lastName,
-        ].where((name) => name != null && name.isNotEmpty).join(' '),
-        avatarBase64: _loggedInUser?.photo ?? '',
-        designation: _loggedInUser?.designation ?? '',
-        department: _loggedInUser?.departmentName ?? '',
-        mobile: _loggedInUser?.mobile ?? '',
-        workNumber: _loggedInUser?.workPhone ?? '',
-        residence: _loggedInUser?.residencePhone ?? '',
-        email: _loggedInUser?.email ?? '',
-        cabinNumber: _loggedInUser?.roomNo ?? '',
-        quarterNumber: _loggedInUser?.quarterNo ?? '',
-        empType: _loggedInUser?.employeeType ?? '',
-        empCode: _loggedInUser?.empCode ?? '',
+      builder: (_) => UserProfilePopup(
+        userName: fullName,
+        avatarBase64: _user!.photo ?? '',
+        designation: _user!.designation ?? '',
+        department: _user!.departmentName ?? '',
+        mobile: _user!.mobile ?? '',
+        workNumber: _user!.workPhone ?? '',
+        residence: _user!.residencePhone ?? '',
+        email: _user!.email ?? '',
+        cabinNumber: _user!.roomNo ?? '',
+        quarterNumber: _user!.quarterNo ?? '',
+        empType: _user!.employeeType ?? '',
+        empCode: _user!.empCode ?? '',
       ),
     );
   }
 
+  Future<void> _confirmLogout() async {
+    if (_user?.empCode == null) return;
+    final shouldLogout = await DialogsAndPrompts.showLogoutConfirmationDialog(
+      context,
+      _user!.empCode!,
+    );
+    if (shouldLogout == true) {
+      await UserProfileController().logout(context);
+    }
+  }
+
+  void _deregister() {
+    LocalStorageService.getCurrentUser().then((u) {
+      if (u?.empCode != null) {
+        DialogsAndPrompts.showDeRegisterDeviceDialog(context, u!.empCode!);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Check if the user is loaded before proceeding
-    if (_loggedInUser == null) {
-      return CircularProgressIndicator(); // Or any loading widget
+    if (_loading) {
+      return const SizedBox(
+        width: 32,
+        height: 32,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
     }
 
-    bool isImageValid = _loggedInUser!.photo!.isNotEmpty &&
-        ImageValidator().isValidBase64Image(_loggedInUser!.photo!);
+    final hasImage = _avatarBytes != null;
+    final firstName = _user?.firstName ?? '';
 
-    return PopupMenuButton(
+    return PopupMenuButton<String>(
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (value) => _onButtonClick(value),
+      onSelected: _onMenuSelected,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -107,31 +141,44 @@ class _UserProfileButtonState extends State<UserProfileButton> {
           borderRadius: BorderRadius.circular(50),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: LaunchAppTheme.accentColor,
-              backgroundImage: isImageValid
-                  ? MemoryImage(base64Decode(_loggedInUser!.photo!))
-                  : null,
-              child: !isImageValid
-                  ? Text(
-                      _loggedInUser!.firstName![0].toUpperCase(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Colors.white,
-                      ),
-                    )
-                  : null,
+            // -------- avatar with thin border --------
+            Container(
+              width: 32,
+              height: 32,
+              padding: const EdgeInsets.all(1.2), // border thickness
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: LaunchAppTheme.accentColor,
+                  width: 1.2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: LaunchAppTheme.accentColor,
+                backgroundImage: hasImage ? MemoryImage(_avatarBytes!) : null,
+                child: !hasImage && firstName.isNotEmpty
+                    ? Text(
+                        firstName[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      )
+                    : null,
+              ),
             ),
+            // -----------------------------------------
             const SizedBox(width: 6),
             Text(
-              _loggedInUser!.firstName ?? 'User',
+              firstName.isNotEmpty ? firstName : 'User',
               style: LaunchAppTheme.subheadingStyle.copyWith(
                 color: LaunchAppTheme.textPrimaryColor,
-                fontWeight: FontWeight.bold,
                 fontSize: 12,
+                fontWeight: FontWeight.bold,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -139,43 +186,39 @@ class _UserProfileButtonState extends State<UserProfileButton> {
             const SizedBox(width: 4),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: LaunchAppTheme.textSecondaryColor,
               size: 18,
+              color: LaunchAppTheme.textSecondaryColor,
             ),
           ],
         ),
       ),
-      itemBuilder: (context) => [
-        _buildMenuItem(Icons.person_outline_rounded, 'My Profile'),
-        _buildMenuItem(Icons.privacy_tip, 'Privacy Policy'),
+      itemBuilder: (_) => [
+        _menuItem(Icons.person_outline, 'My Profile'),
+        _menuItem(Icons.privacy_tip, 'Privacy Policy'),
         const PopupMenuDivider(),
-        _buildMenuItem(Icons.logout_rounded, 'Log Out', isDestructive: true),
-        _buildMenuItem(Icons.delete_forever_rounded, 'Deregister and Log Out',
+        _menuItem(Icons.logout, 'Log Out', isDestructive: true),
+        _menuItem(Icons.delete_forever, 'Deregister and Log Out',
             isDestructive: true),
       ],
     );
   }
 
-  PopupMenuEntry<dynamic> _buildMenuItem(IconData icon, String label,
+  PopupMenuEntry<String> _menuItem(IconData icon, String label,
       {bool isDestructive = false}) {
-    return PopupMenuItem<dynamic>(
+    final color =
+        isDestructive ? Colors.red : LaunchAppTheme.textSecondaryColor;
+    return PopupMenuItem<String>(
       value: label,
       child: Row(
         children: [
-          Icon(
-            icon,
-            color:
-                isDestructive ? Colors.red : LaunchAppTheme.textSecondaryColor,
-            size: 18,
-          ),
+          Icon(icon, size: 18, color: color),
           const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              color:
-                  isDestructive ? Colors.red : LaunchAppTheme.textPrimaryColor,
               fontSize: 12,
               fontWeight: FontWeight.w500,
+              color: isDestructive ? Colors.red : LaunchAppTheme.textPrimaryColor,
             ),
           ),
         ],

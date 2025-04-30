@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:nitris/core/models/login.dart';
 import 'package:http/http.dart' as http;
 import 'package:nitris/core/models/student.dart';
+import 'package:nitris/core/models/student_attendance_summary.dart';
 import 'package:nitris/core/models/students_subject_response.dart';
 import 'package:nitris/core/models/subject_response.dart';
 import 'package:nitris/core/models/user.dart';
@@ -264,6 +265,33 @@ class ApiService {
       _logger
           .severe('Failed to check session status: ${response.reasonPhrase}');
       throw Exception('Failed to check session status');
+    }
+  }
+
+  
+  /// Fetch attendance summary for a student
+  Future<StudentAttendanceSummary> getStudentAttendance({
+    required String rollNo,
+    required int month,
+    required int year,
+  }) async {
+    final uri = Uri.parse(
+      'https://api.nitrkl.ac.in/Biometric/GetStudentAttendance'
+      '?rollno=$rollNo&month=$month&year=$year',
+    );
+
+    final response = await _sendRequest('GET', uri);
+
+    if (response.statusCode == 200) {
+      final jsonBody = await response.stream.bytesToString();
+      return StudentAttendanceSummary.fromJson(
+        json.decode(jsonBody) as Map<String, dynamic>
+      );
+    } else {
+      _logger.severe(
+        'getStudentAttendance failed: ${response.statusCode} ${response.reasonPhrase}'
+      );
+      throw Exception('Could not load attendance');
     }
   }
 
