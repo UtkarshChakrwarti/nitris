@@ -74,7 +74,7 @@ class _FileTrackingInDevelopmentState extends State<FileTrackingInDevelopment>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Pulsating folder icon
+                // Animated Fingerprint Icon
                 ScaleTransition(
                   scale: _scaleAnimation,
                   child: Container(
@@ -87,22 +87,24 @@ class _FileTrackingInDevelopmentState extends State<FileTrackingInDevelopment>
                     child: Icon(
                       Icons.folder_open,
                       size: 70,
-                      color: AppColors.primaryColor.withOpacity(0.5),
+                      color: AppColors.primaryColor,
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
+                // Coming Soon Text
                 Text(
-                  "Feature In Development",
+                  "COMING SOON",
                   style: LaunchAppTheme.headlineStyle.copyWith(
                     color: AppColors.primaryColor,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
+                    letterSpacing: 2.0,
                   ),
                 ),
                 const SizedBox(height: 16),
+                // Description
                 Text(
-                  "File Tracking is currently in development and will be available soon.",
+                  "We're working on an advanced biometric attendance system.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey[700],
@@ -110,7 +112,27 @@ class _FileTrackingInDevelopmentState extends State<FileTrackingInDevelopment>
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
+                // Progress indicator with Icon
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.timelapse,
+                      color: AppColors.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Development in progress",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
