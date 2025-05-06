@@ -54,8 +54,8 @@ class AttendanceRecord {
   /// Returns the holiday name (e.g. "Good Friday"), or null otherwise
   String? get holidayName => isHoliday ? reason : null;
   
-  bool get isPresent => message == 'Present';
-  bool get isAbsent => message == 'Absent';
+  bool get isPresent => message.toLowerCase().contains('present');
+  bool get isAbsent => message.toLowerCase().contains('absent');
   bool get isFutureDate => message == 'Date is more than current date';
 
   bool get isOneSignature => message =='One Signature';
