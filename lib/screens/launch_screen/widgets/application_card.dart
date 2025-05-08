@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nitris/core/models/application.dart';
 import 'package:nitris/core/services/local/local_storage_service.dart';
+import 'package:nitris/screens/apps/biometric_inapp/biometric_dashboard.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/update/contact_update_controller/contacts_update_controller.dart';
 import 'package:nitris/screens/launch_screen/theme/launch_app_theme.dart';
 import 'package:nitris/core/constants/app_colors.dart';
@@ -120,7 +121,17 @@ class ApplicationCard extends StatelessWidget {
               ? '/biometricPlaceholder'
               : '/biometricAttendanceStudent';
         } else {
-          route = '/biometricAttendanceFaculty';
+          // For non-students, directly navigate to BiometricTeacherAttendancePage
+          if (context.mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    BiometricTeacherAttendancePage(teacherId: empCode),
+              ),
+            );
+          }
+          return; // Early return since we've already navigated
         }
         break;
 

@@ -5,7 +5,7 @@ class AppConstants {
   static const String securityKey ="opSlTMEmocl0W9hbRv9n"; // Key for encryption
 
   //Current App version
-  static const String currentAppVersion = '2.0.2';
+  static const String currentAppVersion = '2.0.3';
 
   // Play Store URL
   static const String appStoreUrl = 'https://apps.apple.com/us/app/nitris/id6739775147';
@@ -19,6 +19,9 @@ class AppConstants {
 
   static const String catUrl =
       'https://www.nitrkl.ac.in/CAT/';
+
+  static const String biometric = 
+      "https://api.nitrkl.ac.in/Biometric";
 
   // Database constants
   static const String dbName = 'app.db';

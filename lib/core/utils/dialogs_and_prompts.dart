@@ -97,7 +97,13 @@ class DialogsAndPrompts {
                 ),
               ),
               onPressed: () {
-                Navigator.of(context).pop(true);
+                // close the dialog
+                Navigator.of(context).pop();
+                // clear the stack and go to dashboard
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/home',
+                  (route) => false,
+                );
               },
             ),
           ],

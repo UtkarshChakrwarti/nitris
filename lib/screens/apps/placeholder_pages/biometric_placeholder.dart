@@ -99,7 +99,7 @@ class _NoAccessBiometricAttendanceState extends State<NoAccessBiometricAttendanc
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  "You don’t have access to biometric attendance yet.\n",
+                  "You don't have access to biometric attendance yet.\n",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey[700],

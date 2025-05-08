@@ -104,7 +104,8 @@ class _FileTrackingInDevelopmentState extends State<FileTrackingInDevelopment>
                 const SizedBox(height: 16),
                 // Description
                 Text(
-                  "We're working on an advanced biometric attendance system.",
+                  "We're working on File Tracking module.\n"
+                  "Stay tuned for updates!",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey[700],
