@@ -18,7 +18,7 @@ class AppColors {
 
   // Status colors (Material 400 shades for extra pop)
   static const yellowStatus = Color(0xFFFFCA28); // Amber 400
-  static const blueStatus   = Color(0xFF42A5F5); // Blue 400 (Holiday)
+  static const blueStatus   = Color.fromARGB(255, 1, 116, 210); // Blue 400 (Holiday)
   static const greenStatus  = Color(0xFF66BB6A); // Green 400
   static const redStatus    = Color(0xFFEF5350); // Red 400
   static const purpleStatus = Color(0xFF7E57C2); // Deep Purple 400 (Full Approval Pending)

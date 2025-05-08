@@ -916,7 +916,7 @@ class _StudentAttendancePageBiometricState
         ? Colors.grey.withOpacity(.15)
         : isSelected
             ? AppColors.primaryColor.withOpacity(.2)
-            : baseColor.withOpacity(.15);
+            : baseColor.withOpacity(.25);
     final border = isSelected
         ? Border.all(color: AppColors.primaryColor, width: 2)
         : isToday
