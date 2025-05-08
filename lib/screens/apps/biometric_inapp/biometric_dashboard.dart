@@ -560,48 +560,48 @@ class _BiometricTeacherAttendancePageState
     );
   }
 
-  // Handle back button press with confirmation
   Future<bool> _onWillPop() async {
     if (!_mounted) return true;
 
     // No changes check needed when there's no weekData yet or students list is empty
     if (_weekData == null || _uiStudents.isEmpty) return true;
 
+    // Check for changes (keep this for the dialog message)
     final listEquals = const ListEquality().equals;
     bool hasChanges = _uiStudents.any(
       (student) => !listEquals(student.attendance, student.originalAttendance),
     );
 
-    if (hasChanges) {
-      return await showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(
-                'Discard Changes?',
-                style: TextStyle(color: AppColors.primaryColor),
-              ),
-              content: const Text(
-                'Any unsaved changes will be lost. Do you want to go back?',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('STAY ON PAGE',
-                      style: TextStyle(color: AppColors.primaryColor)),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: Text(
-                    'YES, EXIT',
-                    style: TextStyle(color: AppColors.primaryColor),
-                  ),
-                ),
-              ],
+    // Always show dialog, but with different messages based on whether there are changes
+    return await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              hasChanges ? 'Discard Changes?' : 'Exit Attendance Page?',
+              style: TextStyle(color: AppColors.primaryColor),
             ),
-          ) ??
-          false;
-    }
-    return true;
+            content: Text(
+              hasChanges
+                  ? 'Any unsaved changes will be lost. Do you want to go back?'
+                  : 'Are you sure you want to exit the attendance page?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('STAY ON PAGE',
+                    style: TextStyle(color: AppColors.primaryColor)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(
+                  'YES, EXIT',
+                  style: TextStyle(color: AppColors.primaryColor),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   // Create a separate method for the loading state back button confirmation
@@ -610,7 +610,7 @@ class _BiometricTeacherAttendancePageState
           context: context,
           builder: (context) => AlertDialog(
             title: Text(
-              'Confirm Exit',
+              'Exit Attendance Page?',
               style: TextStyle(color: AppColors.primaryColor),
             ),
             content: const Text(
