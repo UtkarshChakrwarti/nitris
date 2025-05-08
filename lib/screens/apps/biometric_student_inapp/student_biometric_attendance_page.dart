@@ -486,10 +486,10 @@ class _StudentAttendancePageBiometricState
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w400, color: color)),
+                  fontSize: 9, fontWeight: FontWeight.w400, color: color)),
           Text(value,
               style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primaryColor)),
         ],
@@ -541,14 +541,14 @@ class _StudentAttendancePageBiometricState
                   border: Border.all(color: AppColors.primaryColor, width: 1.5),
                 ),
                 child: CircleAvatar(
-                  radius: 24,
+                  radius: 22,
                   backgroundColor: AppColors.primaryColor.withOpacity(.1),
                   backgroundImage: _cachedAvatarImage != null
                       ? MemoryImage(_cachedAvatarImage!)
                       : null,
                   child: _cachedAvatarImage == null
                       ? const Icon(Icons.person,
-                          size: 28, color: AppColors.primaryColor)
+                          size: 22, color: AppColors.primaryColor)
                       : null,
                 ),
               ),
@@ -576,7 +576,7 @@ class _StudentAttendancePageBiometricState
                 return Text(
                   lines[i],
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primaryColor,
                   ),
