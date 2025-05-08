@@ -20,6 +20,8 @@ class AppConstants {
   static const String catUrl =
       'https://www.nitrkl.ac.in/CAT/';
 
+  static const String biometric = "https://api.nitrkl.ac.in/Biometric";
+
   // Database constants
   static const String dbName = 'app.db';
   static const String userTable = 'users';

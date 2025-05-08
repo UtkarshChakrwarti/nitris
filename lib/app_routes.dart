@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:nitris/core/exception/custom_error.dart';
-import 'package:nitris/screens/apps/biometric_inapp/biometric_dashboard.dart';
 import 'package:nitris/screens/apps/biometric_student_inapp/student_biometric_attendance_page.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/update/contacts_update_screen.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/main_screen/home_screen.dart';
@@ -53,9 +52,6 @@ final Map<String, WidgetBuilder> appRoutes = {
 
   // students Attendance Screen
   '/studentAttendance': (context) => const StudentAttendanceHomeScreen(),
-
-  // Biometric Attendance Screen Faculty
-  '/biometricAttendanceFaculty': (context) => const BiometricAttendancePage(),
 
   // Biometric Attendance Screen Student
   '/biometricAttendanceStudent': (context) => const StudentAttendancePageBiometric(),
