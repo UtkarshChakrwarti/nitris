@@ -212,8 +212,9 @@ class _AttendanceSubmitDialogState extends State<AttendanceSubmitDialog> {
             Navigator.of(context).pop();
             widget.onCancel();
           },
-          child: const Text('CANCEL'),
-        ),
+          child: const Text('CANCEL',
+          style: TextStyle(color: AppColors.primaryColor))),
+        const SizedBox(width: 8),
         ElevatedButton(
           onPressed: _submitting ? null : _submitAttendance,
           style: ElevatedButton.styleFrom(
