@@ -94,6 +94,7 @@ class AttendanceService {
     // For userId "1000000", return success without making API call
     final loginResponse = await LocalStorageService.getLoginResponse();
     if (loginResponse?.empCode == "1000000") {
+      print("returning from dummy payload");
       return true;
     }
     
