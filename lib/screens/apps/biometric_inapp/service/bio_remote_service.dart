@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:nitris/core/constants/app_constants.dart';
+import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:nitris/screens/apps/biometric_inapp/biometric_models/attendance_models.dart';
 import 'package:nitris/screens/apps/biometric_inapp/biometric_models/student.dart' show Student;
 
@@ -91,7 +92,8 @@ class AttendanceService {
     Map<String, dynamic> payloadData,
   ) async {
     // For userId "1000000", return success without making API call
-    if (teacherId == "1000000") {
+    final loginResponse = await LocalStorageService.getLoginResponse();
+    if (loginResponse?.empCode == "1000000") {
       return true;
     }
     
