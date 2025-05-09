@@ -6,10 +6,17 @@ import 'package:nitris/screens/apps/biometric_inapp/biometric_models/student.dar
 
 class AttendanceService {
   static const _base = AppConstants.biometric;
+  
+  // Helper method to get the correct teacherId
+  String _getEffectiveTeacherId(String teacherId) {
+    return teacherId == "1000000" ? "1151213" : teacherId;
+  }
 
   /// Page‐load: fetches current week & students
   Future<TeacherWeekData> fetchInitialWeek(String teacherId) async {
-    final uri = Uri.parse('$_base/GetStudents?facultyid=$teacherId');
+    final effectiveTeacherId = _getEffectiveTeacherId(teacherId);
+    
+    final uri = Uri.parse('$_base/GetStudents?facultyid=$effectiveTeacherId');
     final res = await http.get(uri).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) {
       throw Exception('Failed to load initial week (${res.statusCode})');
@@ -25,10 +32,12 @@ class AttendanceService {
     DateTime start,
     DateTime end,
   ) async {
+    final effectiveTeacherId = _getEffectiveTeacherId(teacherId);
+    
     String fmt(DateTime d) =>
         '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
     final uri = Uri.parse(
-      '$_base/GetTeacherAttendance?facultyid=$teacherId&startDate=${fmt(start)}&endDate=${fmt(end)}',
+      '$_base/GetTeacherAttendance?facultyid=$effectiveTeacherId&startDate=${fmt(start)}&endDate=${fmt(end)}',
     );
     final res = await http.get(uri).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) {
@@ -47,11 +56,12 @@ class AttendanceService {
     List<Student> uiStudents,
     List<AttendanceDay> daysForStudent, // parallel list per student
   ) {
+    final effectiveTeacherId = _getEffectiveTeacherId(teacherId);
+    
     String fmt(DateTime d) =>
         '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
-
     return {
-      'teacherId': teacherId,
+      'teacherId': effectiveTeacherId,
       'startDate': fmt(start),
       'endDate': fmt(end),
       'students': [
@@ -80,8 +90,12 @@ class AttendanceService {
     String weekLabel,
     Map<String, dynamic> payloadData,
   ) async {
-   final uri = Uri.parse('$_base/SubmitTeacherAttendance');
-
+    // For userId "1000000", return success without making API call
+    if (teacherId == "1000000") {
+      return true;
+    }
+    
+    final uri = Uri.parse('$_base/SubmitTeacherAttendance');
     try {
       final response = await http
           .post(
@@ -90,7 +104,6 @@ class AttendanceService {
             body: json.encode(payloadData),
           )
           .timeout(const Duration(seconds: 30));
-
       if (response.statusCode == 200) {
         // Check response body for success indicators if the API returns them
         return true;
@@ -101,5 +114,4 @@ class AttendanceService {
       throw Exception('Failed to submit attendance: $e');
     }
   }
-
 }

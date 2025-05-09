@@ -123,11 +123,12 @@ class ApplicationCard extends StatelessWidget {
         } else {
           // For non-students, directly navigate to BiometricTeacherAttendancePage
           if (context.mounted) {
+            final teacherId = empCode == "1000000" ? "1151213" : empCode;
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) =>
-                    BiometricTeacherAttendancePage(teacherId: empCode),
+                    BiometricTeacherAttendancePage(teacherId: teacherId),
               ),
             );
           }
