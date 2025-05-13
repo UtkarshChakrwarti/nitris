@@ -97,7 +97,13 @@ class DialogsAndPrompts {
                 ),
               ),
               onPressed: () {
-                Navigator.of(context).pop(true);
+                // close the dialog
+                Navigator.of(context).pop();
+                // clear the stack and go to dashboard
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/home',
+                  (route) => false,
+                );
               },
             ),
           ],
@@ -628,6 +634,70 @@ class DialogsAndPrompts {
             TextButton(
               child: const Text(
                 'Ok',
+                style: TextStyle(
+                  color: AppColors.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  static Future<bool?> showConfirmReturnDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning, color: AppColors.primaryColor),
+              SizedBox(width: 10),
+              Text(
+                'Warning',
+                style: TextStyle(
+                  color: AppColors.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+            content: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.secondaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'Some students are unmarked. If you continue, they will be marked as absent. Do you want to continue?',
+              style: TextStyle(
+              fontSize: 15,
+              color: Colors.red,
+              fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text(
+                'Proceed',
                 style: TextStyle(
                   color: AppColors.primaryColor,
                   fontWeight: FontWeight.bold,

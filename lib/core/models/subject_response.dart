@@ -5,7 +5,6 @@ class SubjectResponse {
   final String status;
   final int totalSubjects;
   final String attendancedate;
-  // final String totalClass
 
   SubjectResponse({
     required this.subjects,
@@ -13,10 +12,21 @@ class SubjectResponse {
     required this.totalSubjects,
     required this.attendancedate,
   });
+  
   factory SubjectResponse.fromJson(Map<String, dynamic> json) {
     var subjectsJson = json['subjects'] as List<dynamic>? ?? [];
     List<Subject> subjectsList =
         subjectsJson.map((subject) => Subject.fromJson(subject)).toList();
+    
+    // Sort subjects so that 'Theory' comes before 'Practical'
+    subjectsList.sort((a, b) {
+      if (a.subjectNature == 'Theory' && b.subjectNature != 'Theory') {
+        return -1;
+      } else if (a.subjectNature != 'Theory' && b.subjectNature == 'Theory') {
+        return 1;
+      }
+      return 0;
+    });
 
     return SubjectResponse(
       subjects: subjectsList,

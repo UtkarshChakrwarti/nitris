@@ -1,5 +1,5 @@
-// lib/models/student.dart
-enum AttendanceStatus { notMarked, present, absent }
+
+import 'package:nitris/core/enums/attendance_status.dart';
 
 class Student {
   final String id;

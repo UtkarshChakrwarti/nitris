@@ -11,6 +11,7 @@ class Subject {
   final String session;
   final String section;
   final int sectionId;
+  final String roomNo; // Added roomNo field, nullable
 
   Subject({
     required this.totalClass,
@@ -24,6 +25,7 @@ class Subject {
     required this.session,
     required this.section,
     required this.sectionId,
+    required this.roomNo, // Initialize roomNo
   });
 
   factory Subject.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,7 @@ class Subject {
       session: json['session'] ?? '',
       section: json['section'] ?? '',
       sectionId: json['sectionId'] ?? 0,
+      roomNo: json['roomno'] ?? '', // Initialize roomNo from JSON
     );
   }
 
@@ -55,6 +58,7 @@ class Subject {
       'session': session,
       'section': section,
       'sectionId': sectionId,
+      'roomno': roomNo, // Include roomNo in JSON
     };
   }
 }

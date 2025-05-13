@@ -20,7 +20,7 @@ class TermsText extends StatelessWidget {
               style: TextStyle(
                   color: AppColors.primaryColor,
                   fontSize: 14,
-                  decoration: TextDecoration.underline)),
+                  decoration: TextDecoration.none)),
         ),
       ],
     );

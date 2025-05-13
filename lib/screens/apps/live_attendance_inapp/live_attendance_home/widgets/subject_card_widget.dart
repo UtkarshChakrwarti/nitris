@@ -5,7 +5,6 @@ import 'package:nitris/core/models/subject.dart';
 import 'package:nitris/core/utils/date_utils.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/live_attendance_home/widgets/class_selection_sheet.dart';
 
-
 class SubjectCardWidget extends StatefulWidget {
   final Subject subject;
   final String attendanceDate;
@@ -52,14 +51,13 @@ class _SubjectCardWidgetState extends State<SubjectCardWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Use the utility function to get the month abbreviation
     String formattedMonth = getMonthAbbreviation(widget.attendanceDate);
 
     return AnimationConfiguration.staggeredList(
       position: widget.index,
       duration: const Duration(milliseconds: 375),
       child: SlideAnimation(
-        verticalOffset: 50.0,
+        verticalOffset: 30.0,
         child: FadeInAnimation(
           child: GestureDetector(
             onTap: () => _handleTap(context),
@@ -67,80 +65,75 @@ class _SubjectCardWidgetState extends State<SubjectCardWidget> {
             onTapCancel: () => setState(() => _isPressed = false),
             onTapUp: (_) => setState(() => _isPressed = false),
             child: AnimatedScale(
-              scale: _isPressed ? 0.95 : 1.0,
+              scale: _isPressed ? 0.97 : 1.0,
               duration: const Duration(milliseconds: 100),
               curve: Curves.easeOut,
               child: Container(
-                margin:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.white, Color(0xFFF9F9F9)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryColor.withOpacity(0.15),
-                      spreadRadius: 2,
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+                      color: AppColors.primaryColor.withOpacity(0.10),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryColor.withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.menu_book_rounded,
-                          color: AppColors.primaryColor,
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.subject.subjectName,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.menu_book_rounded,
+                      color: AppColors.primaryColor,
+                      size: 26,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.subject.subjectName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${widget.subject.subjectCode} | '
-                              '${widget.subject.subjectNature} | '
-                              '${widget.subject.credit} Credits | '
-                              '${widget.subject.timeSlot} | '
-                              '#$classNumber classes taken in $formattedMonth',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
-                                height: 1.4,
-                              ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.subject.subjectCode} | '
+                            '${widget.subject.subjectNature} | '
+                            '${widget.subject.credit} Credits | '
+                            '${widget.subject.timeSlot}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[700],
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '#$classNumber classes in $formattedMonth'
+                            '${widget.subject.roomNo.isNotEmpty ? ' | Room # ${widget.subject.roomNo}' : ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: AppColors.secondaryColor,
-                        size: 20,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 20,
+                      color: AppColors.secondaryColor,
+                    ),
+                  ],
                 ),
               ),
             ),

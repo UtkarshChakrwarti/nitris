@@ -8,12 +8,14 @@ class Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+     final int currentYear = DateTime.now().year;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text("\u{00A9} NIT Rourkela 2024 \nDesigned and Developed by ",
+        Text("\u{00A9} NIT Rourkela $currentYear \nDesigned and Developed by ",
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
                 fontSize: 14, color: Colors.black, fontFamily: 'Roboto')),
         GestureDetector(
           onTap: () => LinkLauncher.launchURL(AppConstants.catUrl),
@@ -23,7 +25,7 @@ class Footer extends StatelessWidget {
                   color: AppColors.primaryColor,
                   fontSize: 14,
                   fontFamily: 'Roboto',
-                  decoration: TextDecoration.underline)),
+                  decoration: TextDecoration.none)),
         ),
         const SizedBox(height: 20),
       ],

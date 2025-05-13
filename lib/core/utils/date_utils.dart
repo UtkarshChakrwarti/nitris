@@ -1,24 +1,25 @@
 import 'package:intl/intl.dart';
 
-/// Parses a date string in the format 'yyyy.MM.dd' and returns the month abbreviation.
-///
+/// Attempts to parse a date string using multiple formats
+/// and returns the month abbreviation.
 /// If parsing fails, returns 'Invalid Date'.
 String getMonthAbbreviation(String dateStr) {
+  DateTime? parsedDate;
   try {
-    // Define the expected input format
-    final DateFormat inputFormat = DateFormat('yyyy.MM.dd');
-    
-    // Parse the input date string to a DateTime object
-    DateTime parsedDate = inputFormat.parseStrict(dateStr);
-    
-    // Define the desired output format (e.g., 'Dec' for December)
-    final DateFormat outputFormat = DateFormat('MMM');
-    
-    // Format the DateTime object to get the month abbreviation
-    return outputFormat.format(parsedDate);
+    // First, try the built-in ISO 8601 parser.
+    parsedDate = DateTime.parse(dateStr);
   } catch (e) {
-    // Handle parsing errors
-    print('Error parsing date: $e');
-    return 'Invalid Date';
+    // If ISO parsing fails, try the expected format with dots.
+    try {
+      final DateFormat inputFormat = DateFormat('yyyy.MM.dd');
+      parsedDate = inputFormat.parseStrict(dateStr);
+    } catch (e2) {
+      print('Error parsing date: $e2');
+      return 'Invalid Date';
+    }
   }
+
+  // Once parsed, format to get the month abbreviation.
+  final DateFormat outputFormat = DateFormat('MMM');
+  return outputFormat.format(parsedDate);
 }

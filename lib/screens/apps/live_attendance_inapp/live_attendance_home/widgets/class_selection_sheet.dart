@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/models/subject.dart';
 import 'package:nitris/core/services/remote/api_service.dart';
 import 'package:nitris/screens/apps/live_attendance_inapp/attendance/attendance_screen.dart';
 
-class ClassSelectionSheet extends StatelessWidget {
+class ClassSelectionSheet extends StatefulWidget {
   final Subject subject;
   final String attendanceDate;
 
@@ -15,19 +16,25 @@ class ClassSelectionSheet extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _ClassSelectionSheetState createState() => _ClassSelectionSheetState();
+}
+
+class _ClassSelectionSheetState extends State<ClassSelectionSheet> {
+  bool _isLoading = false;
+
+  @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    // Calculate class number and check button availability.
-    final classNumber = subject.totalClass + 1;
+    // Calculate class number and button availability.
+    final classNumber = widget.subject.totalClass + 1;
     final isButtonActive = classNumber >= 1 && classNumber <= 20;
 
     // Process the attendanceDate (expected format "yyyy.MM.dd").
-    String displayDate = attendanceDate;
+    String displayDate = widget.attendanceDate;
     String currentYear = "0000";
     int dayInt = 0;
     int monthInt = 0;
-    final parts = attendanceDate.split('.');
+    final parts = widget.attendanceDate.split('.');
     if (parts.length == 3) {
       final year = parts[0];
       final month = parts[1];
@@ -57,16 +64,16 @@ class ClassSelectionSheet extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
+            // Handle bar (aesthetic improvement)
             Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
+              margin: const EdgeInsets.symmetric(vertical: 16),
               width: 50,
-              height: 5,
+              height: 6,
               decoration: BoxDecoration(
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(10),
@@ -74,21 +81,21 @@ class ClassSelectionSheet extends StatelessWidget {
             ),
             // Title and Subject Code
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 children: [
                   Text(
-                    subject.subjectName,
+                    widget.subject.subjectName,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primaryColor,
                       fontFamily: 'Roboto',
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
-                    subject.subjectCode,
+                    widget.subject.subjectCode,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -99,21 +106,21 @@ class ClassSelectionSheet extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             // Date Display
             Text(
               displayDate,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w500,
                 color: AppColors.primaryColor,
                 fontFamily: 'Roboto',
               ),
             ),
-            const SizedBox(height: 12),
-            // Class number display
+            const SizedBox(height: 16),
+            // Class number display with refined padding and shadow.
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -123,12 +130,12 @@ class ClassSelectionSheet extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.secondaryColor.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
@@ -136,7 +143,7 @@ class ClassSelectionSheet extends StatelessWidget {
                 child: Text(
                   'Class # $classNumber',
                   style: const TextStyle(
-                    fontSize: 28,
+                    fontSize: 30,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primaryColor,
                     fontFamily: 'Roboto',
@@ -144,35 +151,42 @@ class ClassSelectionSheet extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 30),
-            // Action button
+            const SizedBox(height: 36),
+            // Action button with enhanced loading indicator.
             Padding(
               padding: EdgeInsets.only(bottom: bottomPadding + 16),
               child: ElevatedButton(
-                onPressed: isButtonActive
+                onPressed: isButtonActive && !_isLoading
                     ? () async {
-                        // Create an instance of ApiService.
+                        setState(() {
+                          _isLoading = true;
+                        });
                         final apiService = ApiService();
                         try {
-                          // Trigger the active session API call.
-                          final activeSession = await apiService.startLiveSession(
-                            subject.sectionId.toString(),
+                          // Show loading indicator while fetching current position.
+                          final currentPosition = await Geolocator.getCurrentPosition(
+                            desiredAccuracy: LocationAccuracy.high,
                           );
-                          print("Active session started: $activeSession");
-                          // Extract sessionTime from the response.
+                          final latLongString =
+                              '${currentPosition.latitude}|${currentPosition.longitude}';
+                          // Start live session API call.
+                          final activeSession = await apiService.startLiveSession(
+                            widget.subject.sectionId.toString(),
+                            latLongString,
+                          );
                           final sessionTime = activeSession['sessionTime'];
-                          
-                          // Navigate to AttendancePage with sessionTime passed.
+                          // Navigate to AttendancePage.
                           Navigator.pop(context);
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => AttendancePage(
-                                subject: subject,
+                                subject: widget.subject,
                                 classNumber: classNumber,
-                                semester: subject.session,
+                                semester: widget.subject.session,
                                 currentYear: currentYear,
-                                sectionId: subject.sectionId,
+                                academicYear: widget.subject.academicYear,
+                                sectionId: widget.subject.sectionId,
                                 date: dayInt,
                                 month: monthInt,
                                 sessionTime: sessionTime,
@@ -181,29 +195,62 @@ class ClassSelectionSheet extends StatelessWidget {
                           );
                         } catch (error) {
                           print("Error starting active session: $error");
-                          // Optionally, display an error message to the user.
-                          return;
+                          setState(() {
+                            _isLoading = false;
+                          });
                         }
                       }
                     : null,
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: AppColors.primaryColor,
-                  disabledForegroundColor: Colors.grey[300]?.withOpacity(0.38),
-                  disabledBackgroundColor: Colors.grey[300]?.withOpacity(0.12),
-                  minimumSize: const Size(double.infinity, 56),
+                  disabledForegroundColor: AppColors.primaryColor.withOpacity(0.38),
+                  disabledBackgroundColor: AppColors.primaryColor.withOpacity(0.12),
+                  minimumSize: const Size(double.infinity, 64),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  elevation: 5,
+                  elevation: 6,
                 ),
-                child: const Text(
-                  'Take Attendance',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Roboto',
-                  ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                  child: _isLoading
+                      ? Row(
+                          key: const ValueKey('loading'),
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3.0,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            const Text(
+                              'Fetching Location...',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Roboto',
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Text(
+                          'Take Attendance',
+                          key: ValueKey('text'),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Roboto',
+                          ),
+                        ),
                 ),
               ),
             ),

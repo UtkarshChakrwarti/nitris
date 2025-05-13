@@ -29,7 +29,7 @@ class ApplicationGrid extends StatelessWidget {
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 1, // Ensures each tile is square.
+              childAspectRatio: 0.8, // Allow card height to expand if needed.
             ),
             itemBuilder: (context, index) =>
                 ApplicationCard(application: apps[index]),

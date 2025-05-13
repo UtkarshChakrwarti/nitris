@@ -344,10 +344,23 @@ static Future<List<String>> getDepartments() async {
     return currentUser?.firstName;
   }
 
+  // Get the current user's name
+  static Future<String?> getCurrentUserFullName() async {
+    LoginResponse? currentUser = await getLoginResponse();
+    if (currentUser == null) return null;
+    return '${currentUser.firstName}${currentUser.middleName != null ? ' ${currentUser.middleName}' : ''} ${currentUser.lastName}';
+  }
+
   // Get the current user
   static Future<User?> getCurrentUser() async {
     LoginResponse? currentUser = await getLoginResponse();
     return currentUser != null ? convertLoginResponseToUser(currentUser) : null;
+  }
+
+  // Get the current user's employee code
+  static Future<String?> getCurrentUserEmpCode() async {
+    LoginResponse? currentUser = await getLoginResponse();
+    return currentUser?.empCode;
   }
 
   //get the current user's avatar
