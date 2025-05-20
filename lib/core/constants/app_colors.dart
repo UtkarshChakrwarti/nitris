@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
+
 class AppColors {
   // Colors
   static const primaryColor = Color(0xFFC35839);
@@ -23,5 +25,12 @@ class AppColors {
   static const redStatus    = Color(0xFFEF5350); // Red 400
   static const purpleStatus = Color(0xFF7E57C2); // Deep Purple 400 (Full Approval Pending)
   static const cyanStatus   = Color(0xFF26C6DA); // Cyan 400 (One Signature)
+
+    // Additional colors
+  static const surface = Colors.white;
+  static const background = Color(0xFFF8F9FA);
+  static const divider = Color(0xFFE0E0E0);
+  static const textMuted = Color(0xFF9E9E9E);
+  static const cardShadow = Color(0x1A000000);
   
 }

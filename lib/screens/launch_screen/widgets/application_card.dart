@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nitris/core/models/application.dart';
 import 'package:nitris/core/services/local/local_storage_service.dart';
 import 'package:nitris/screens/apps/biometric_inapp/biometric_dashboard.dart';
+import 'package:nitris/screens/apps/fts_inapp/fts-page.dart';
 import 'package:nitris/screens/apps/hello_nitr_inapp/contacts/update/contact_update_controller/contacts_update_controller.dart';
 import 'package:nitris/screens/launch_screen/theme/launch_app_theme.dart';
 import 'package:nitris/core/constants/app_colors.dart';
@@ -138,7 +139,7 @@ class ApplicationCard extends StatelessWidget {
         break;
 
       case 'File':
-        route = '/fileTrackingPlaceholder';
+        FTSTrackingHelper.showFTSInputBottomSheet(context);
         break;
 
       default:
