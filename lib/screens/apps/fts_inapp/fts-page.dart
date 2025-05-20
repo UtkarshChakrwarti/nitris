@@ -28,6 +28,57 @@ class AppStrings {
   static const String invalidDataError = 'Invalid or incomplete data received';
 }
 
+// Typography Scale
+class AppTypography {
+  static const TextStyle headline1 = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+  );
+  
+  static const TextStyle headline2 = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.3,
+  );
+  
+  static const TextStyle headline3 = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+  );
+  
+  static const TextStyle bodyLarge = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.1,
+  );
+  
+  static const TextStyle bodyMedium = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.1,
+  );
+  
+  static const TextStyle bodySmall = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.2,
+  );
+  
+  static const TextStyle caption = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.3,
+  );
+  
+  static const TextStyle button = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.1,
+  );
+}
+
 // Models
 class FTSResponse {
   final String fileName;
@@ -176,6 +227,20 @@ class FTSService {
 }
 
 // Utilities
+class TextUtils {
+  static String cleanText(String text) {
+    return text.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+  
+  static String cleanField(String text) {
+    // Remove extra spaces and ensure consistent formatting
+    return text.trim()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r':\s*'), ': ')
+        .replaceAll(RegExp(r'\s*:\s*'), ': ');
+  }
+}
+
 class DateFormatter {
   static String formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return 'N/A';
@@ -247,32 +312,31 @@ class _FTSInputModalState extends State<FTSInputModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(25),
-          topRight: Radius.circular(25),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 20,
-            offset: Offset(0, -5),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildHandle(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           _buildHeader(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
           _buildFTSInput(),
           const SizedBox(height: 24),
           _buildCheckButton(),
-          const SizedBox(height: 16),
         ],
       ),
     );
@@ -280,7 +344,7 @@ class _FTSInputModalState extends State<FTSInputModal> {
 
   Widget _buildHandle() {
     return Container(
-      width: 40,
+      width: 48,
       height: 4,
       decoration: BoxDecoration(
         color: AppColors.divider,
@@ -292,25 +356,29 @@ class _FTSInputModalState extends State<FTSInputModal> {
   Widget _buildHeader() {
     return Column(
       children: [
-        Icon(
-          Icons.search,
-          size: 36,
-          color: AppColors.primaryColor,
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(
+            Icons.document_scanner_outlined,
+            size: 32,
+            color: AppColors.primaryColor,
+          ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
         Text(
           AppStrings.enterFtsNumber,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+          style: AppTypography.headline2.copyWith(
             color: AppColors.textColor,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           AppStrings.enterFtsDescription,
-          style: TextStyle(
-            fontSize: 14,
+          style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textColor.withOpacity(0.7),
           ),
           textAlign: TextAlign.center,
@@ -322,27 +390,33 @@ class _FTSInputModalState extends State<FTSInputModal> {
   Widget _buildFTSInput() {
     return TextField(
       controller: _ftsController,
+      style: AppTypography.bodyLarge,
       decoration: InputDecoration(
         labelText: AppStrings.enterFtsNumber,
-        labelStyle: TextStyle(color: AppColors.primaryColor), // label color
-        prefixIcon: Icon(Icons.numbers, color: AppColors.primaryColor),
+        labelStyle: AppTypography.bodyMedium.copyWith(
+          color: AppColors.primaryColor,
+        ),
+        prefixIcon: Icon(
+          Icons.numbers_outlined,
+          color: AppColors.primaryColor,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primaryColor), // outline color
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: AppColors.primaryColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primaryColor), // outline color
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: AppColors.primaryColor.withOpacity(0.5)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primaryColor, width: 2), // outline color
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: AppColors.primaryColor, width: 2),
         ),
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
-      cursorColor: AppColors.primaryColor, // pointer color
+      cursorColor: AppColors.primaryColor,
       textInputAction: TextInputAction.done,
       onSubmitted: (_) => _trackFTS(),
     );
@@ -351,22 +425,22 @@ class _FTSInputModalState extends State<FTSInputModal> {
   Widget _buildCheckButton() {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 56,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _trackFTS,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryColor,
           foregroundColor: Colors.white,
-          elevation: 2,
-          shadowColor: AppColors.primaryColor.withOpacity(0.3),
+          elevation: 0,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
         child: _isLoading
             ? const SizedBox(
-                height: 22,
-                width: 22,
+                height: 24,
+                width: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -375,11 +449,11 @@ class _FTSInputModalState extends State<FTSInputModal> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.search, size: 18),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.search, size: 20),
+                  const SizedBox(width: 12),
                   Text(
                     AppStrings.checkStatus,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    style: AppTypography.button.copyWith(color: Colors.white),
                   ),
                 ],
               ),
@@ -419,10 +493,13 @@ class _FTSInputModalState extends State<FTSInputModal> {
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+        ),
         backgroundColor: isError ? AppColors.redStatus : AppColors.greenStatus,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -432,17 +509,24 @@ class _FTSInputModalState extends State<FTSInputModal> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(Icons.error_outline, color: AppColors.redStatus),
-            const SizedBox(width: 10),
-            const Text('Error'),
+            const SizedBox(width: 12),
+            Text(
+              'Error',
+              style: AppTypography.headline3.copyWith(
+                color: AppColors.textColor,
+              ),
+            ),
           ],
         ),
         content: Text(
           error.replaceAll('Exception: ', ''),
-          style: TextStyle(color: AppColors.textColor),
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textColor,
+          ),
         ),
         actions: [
           TextButton(
@@ -450,8 +534,16 @@ class _FTSInputModalState extends State<FTSInputModal> {
             style: TextButton.styleFrom(
               backgroundColor: Colors.transparent,
               foregroundColor: AppColors.primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text('OK'),
+            child: Text(
+              'OK',
+              style: AppTypography.button.copyWith(
+                color: AppColors.primaryColor,
+              ),
+            ),
           ),
         ],
       ),
@@ -478,42 +570,33 @@ class FTSStatusScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(AppStrings.ftsStatus),
+          title: Text(
+            AppStrings.ftsStatus,
+            style: AppTypography.headline2.copyWith(
+              color: Colors.white,
+            ),
+          ),
           backgroundColor: AppColors.primaryColor,
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: false,
-          titleTextStyle: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back_ios_new),
             onPressed: () => _onWillPop(context),
             color: Colors.white,
           ),
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primaryColor, AppColors.primaryColor.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               FileHeaderCard(ftsData: ftsData),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
               FileDetailsCard(ftsData: ftsData),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
               MovementTimeline(movements: ftsData.movements),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -525,17 +608,18 @@ class FTSStatusScreen extends StatelessWidget {
     return await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           AppStrings.goBackTitle,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
+          style: AppTypography.headline3.copyWith(
             color: AppColors.textColor,
           ),
         ),
         content: Text(
           AppStrings.goBackMessage,
-          style: TextStyle(color: AppColors.textColor.withOpacity(0.7)),
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textColor.withOpacity(0.7),
+          ),
         ),
         actions: [
           TextButton(
@@ -543,8 +627,16 @@ class FTSStatusScreen extends StatelessWidget {
             style: TextButton.styleFrom(
               backgroundColor: Colors.transparent,
               foregroundColor: AppColors.textColor.withOpacity(0.7),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text(AppStrings.stay),
+            child: Text(
+              AppStrings.stay,
+              style: AppTypography.button.copyWith(
+                color: AppColors.textColor.withOpacity(0.7),
+              ),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -554,8 +646,16 @@ class FTSStatusScreen extends StatelessWidget {
             style: TextButton.styleFrom(
               backgroundColor: Colors.transparent,
               foregroundColor: AppColors.primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text(AppStrings.goBack),
+            child: Text(
+              AppStrings.goBack,
+              style: AppTypography.button.copyWith(
+                color: AppColors.primaryColor,
+              ),
+            ),
           ),
         ],
       ),
@@ -573,58 +673,50 @@ class FileHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.surface, AppColors.lightSecondaryColor.withOpacity(0.3)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryColor.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
-                  Icons.description,
+                  Icons.description_outlined,
                   color: AppColors.primaryColor,
-                  size: 20,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ftsData.fileName.isNotEmpty ? ftsData.fileName : 'No Title',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      TextUtils.cleanText(ftsData.fileName.isNotEmpty ? ftsData.fileName : 'No Title'),
+                      style: AppTypography.headline3.copyWith(
                         color: AppColors.textColor,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      'ID: ${ftsData.ftsId}',
-                      style: TextStyle(
-                        fontSize: 12,
+                      'ID: ${TextUtils.cleanText(ftsData.ftsId)}',
+                      style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textColor.withOpacity(0.7),
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -633,25 +725,29 @@ class FileHeaderCard extends StatelessWidget {
             ],
           ),
           if (ftsData.lifespan.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.primaryColor.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.primaryColor.withOpacity(0.3),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.schedule, size: 12, color: AppColors.primaryColor),
-                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.schedule_outlined,
+                    size: 16,
+                    color: AppColors.primaryColor,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
-                    'Duration: ${ftsData.lifespan}',
-                    style: TextStyle(
+                    'Duration: ${TextUtils.cleanText(ftsData.lifespan)}',
+                    style: AppTypography.caption.copyWith(
                       color: AppColors.primaryColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
                     ),
                   ),
                 ],
@@ -664,7 +760,7 @@ class FileHeaderCard extends StatelessWidget {
   }
 }
 
-// File Details Card - Ultra Compact Layout
+// File Details Card - Compact Grid Layout
 class FileDetailsCard extends StatelessWidget {
   final FTSResponse ftsData;
 
@@ -675,16 +771,16 @@ class FileDetailsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -693,34 +789,32 @@ class FileDetailsCard extends StatelessWidget {
               Icon(
                 Icons.info_outline,
                 color: AppColors.primaryColor,
-                size: 20,
+                size: 24,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Text(
                 AppStrings.fileDetails,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                style: AppTypography.headline3.copyWith(
                   color: AppColors.textColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          _buildUltraCompactGrid(),
+          const SizedBox(height: 20),
+          _buildCompactDetailsGrid(),
         ],
       ),
     );
   }
 
-  Widget _buildUltraCompactGrid() {
+  Widget _buildCompactDetailsGrid() {
     final details = [
       {'label': 'File Type', 'value': ftsData.fileType},
       {'label': 'Docket No', 'value': ftsData.docketNo},
       {'label': 'Priority', 'value': ftsData.priority},
-      {'label': 'Subject Area', 'value': ftsData.area},
+      {'label': 'Area', 'value': ftsData.area},
       {'label': 'Department', 'value': ftsData.createdDept},
-      {'label': 'File Station', 'value': ftsData.station},
+      {'label': 'Station', 'value': ftsData.station},
       {'label': 'Status', 'value': ftsData.status},
       {'label': 'Created On', 'value': DateFormatter.formatDate(ftsData.createdOn)},
       {'label': 'Created By', 'value': ftsData.createdBy},
@@ -732,63 +826,78 @@ class FileDetailsCard extends StatelessWidget {
         {'label': 'Closing Comments', 'value': ftsData.closingComments},
     ];
 
-    return Column(
-      children: details.map((detail) => _buildCompactRow(
-        label: detail['label'] as String,
-        value: detail['value'] as String,
-      )).toList(),
-    );
-  }
-
-  Widget _buildCompactRow({
-    required String label,
-    required String value,
-  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.lightSecondaryColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.lightSecondaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.lightSecondaryColor.withOpacity(0.2),
+        ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: AppColors.textColor.withOpacity(0.7),
-                fontSize: 11,
+          for (int i = 0; i < details.length; i += 2)
+            Padding(
+              padding: EdgeInsets.only(bottom: i < details.length - 2 ? 12 : 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildDetailItem(
+                      details[i]['label'] as String,
+                      details[i]['value'] as String,
+                    ),
+                  ),
+                  if (i + 1 < details.length) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildDetailItem(
+                        details[i + 1]['label'] as String,
+                        details[i + 1]['value'] as String,
+                      ),
+                    ),
+                  ] else
+                    const Expanded(child: SizedBox()),
+                ],
               ),
             ),
-          ),
-          Text(
-            ': ',
-            style: TextStyle(
-              color: AppColors.textColor.withOpacity(0.7),
-              fontSize: 11,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value.isNotEmpty ? value : 'N/A',
-              style: const TextStyle(
-                color: AppColors.textColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
+
+  Widget _buildDetailItem(String label, String value) {
+    final cleanValue = TextUtils.cleanText(value);
+    if (cleanValue.isEmpty || cleanValue == 'N/A') {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.caption.copyWith(
+            color: AppColors.textColor.withOpacity(0.6),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          cleanValue,
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textColor,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
 }
 
-// Movement Timeline - Minimal Design
+// Movement Timeline - Compact with internal numbering
 class MovementTimeline extends StatelessWidget {
   final List<Movement> movements;
 
@@ -799,42 +908,40 @@ class MovementTimeline extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(
-                Icons.timeline,
+                Icons.timeline_outlined,
                 color: AppColors.primaryColor,
-                size: 20,
+                size: 24,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Text(
                 AppStrings.movementHistory,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                style: AppTypography.headline3.copyWith(
                   color: AppColors.textColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           if (movements.isEmpty)
             _buildEmptyState()
           else
-            _buildMinimalTimeline(),
+            _buildCompactTimeline(),
         ],
       ),
     );
@@ -842,26 +949,28 @@ class MovementTimeline extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppColors.lightSecondaryColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.lightSecondaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.lightSecondaryColor.withOpacity(0.2),
+        ),
       ),
       child: Center(
         child: Column(
           children: [
             Icon(
-              Icons.timeline,
-              size: 36,
+              Icons.timeline_outlined,
+              size: 48,
               color: AppColors.textMuted,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             Text(
               AppStrings.noMovementHistory,
-              style: TextStyle(
+              style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textMuted,
                 fontStyle: FontStyle.italic,
-                fontSize: 13,
               ),
             ),
           ],
@@ -870,34 +979,33 @@ class MovementTimeline extends StatelessWidget {
     );
   }
 
-  Widget _buildMinimalTimeline() {
+  Widget _buildCompactTimeline() {
     return Column(
       children: movements.asMap().entries.map((entry) {
         final index = entry.key;
         final movement = entry.value;
-        final isLast = index == movements.length - 1;
         
-        return MinimalTimelineItem(
+        return CompactTimelineItem(
           movement: movement,
-          isLast: isLast,
           position: index + 1,
+          isLast: index == movements.length - 1,
         );
       }).toList(),
     );
   }
 }
 
-// Minimal Timeline Item - Super Compact
-class MinimalTimelineItem extends StatelessWidget {
+// Compact Timeline Item - Better structured with icons
+class CompactTimelineItem extends StatelessWidget {
   final Movement movement;
-  final bool isLast;
   final int position;
+  final bool isLast;
 
-  const MinimalTimelineItem({
+  const CompactTimelineItem({
     super.key,
     required this.movement,
-    required this.isLast,
     required this.position,
+    required this.isLast,
   });
 
   @override
@@ -912,126 +1020,203 @@ class MinimalTimelineItem extends StatelessWidget {
     if (!hasData) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildMinimalIndicator(),
-          const SizedBox(width: 10),
-          Expanded(child: _buildMovementContent()),
-        ],
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 16),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.lightSecondaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.lightSecondaryColor.withOpacity(0.2),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStepHeader(),
+            const SizedBox(height: 16),
+            _buildMovementDetails(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMinimalIndicator() {
-    return Column(
+  Widget _buildStepHeader() {
+    return Row(
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             color: AppColors.primaryColor,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryColor.withOpacity(0.2),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Center(
             child: Text(
               '$position',
-              style: const TextStyle(
+              style: AppTypography.caption.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 10,
+                fontSize: 11,
               ),
             ),
           ),
         ),
-        if (!isLast)
-          Container(
-            width: 2,
-            height: 30,
-            color: AppColors.primaryColor.withOpacity(0.3),
+        const SizedBox(width: 12),
+        Text(
+          'Movement Step $position',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textColor,
+            fontWeight: FontWeight.w600,
           ),
+        ),
       ],
     );
   }
 
-  Widget _buildMovementContent() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.lightSecondaryColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: _buildMovementFields(),
-      ),
+  Widget _buildMovementDetails() {
+    List<Widget> details = [];
+
+    // Sent By & Sent To
+    if (movement.sentBy.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.send_outlined,
+        label: 'From',
+        value: TextUtils.cleanField(movement.sentBy),
+        date: movement.sentOn.isNotEmpty ? DateFormatter.formatDateShort(movement.sentOn) : null,
+      ));
+    }
+
+    if (movement.sentTo.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.call_received_outlined,
+        label: 'To',
+        value: TextUtils.cleanField(movement.sentTo),
+        date: null,
+      ));
+    }
+
+    // Received By
+    if (movement.receivedBy.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.person_outline,
+        label: 'Received By',
+        value: TextUtils.cleanField(movement.receivedBy),
+        date: movement.receivedOn.isNotEmpty ? DateFormatter.formatDateShort(movement.receivedOn) : null,
+      ));
+    }
+
+    // Marked To
+    if (movement.markedTo.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.bookmark_border_outlined,
+        label: 'Marked To',
+        value: TextUtils.cleanField(movement.markedTo),
+        date: null,
+      ));
+    }
+
+    // CMS ID
+    if (movement.cmsId.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.numbers_outlined,
+        label: 'CMS ID',
+        value: TextUtils.cleanField(movement.cmsId),
+        date: null,
+      ));
+    }
+
+    // Remarks
+    if (movement.remarks.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.comment_outlined,
+        label: 'Remarks',
+        value: TextUtils.cleanField(movement.remarks),
+        date: null,
+        isRemark: true,
+      ));
+    }
+
+    return Column(
+      children: details,
     );
   }
 
-  List<Widget> _buildMovementFields() {
-    List<Widget> fields = [];
-
-    if (movement.sentBy.isNotEmpty) {
-      fields.add(_buildMinimalField('From', movement.sentBy));
-    }
-    if (movement.sentOn.isNotEmpty) {
-      fields.add(_buildMinimalField('Sent', DateFormatter.formatDateShort(movement.sentOn)));
-    }
-    if (movement.sentTo.isNotEmpty) {
-      fields.add(_buildMinimalField('To', movement.sentTo));
-    }
-    if (movement.receivedBy.isNotEmpty) {
-      fields.add(_buildMinimalField('Received By', movement.receivedBy));
-    }
-    if (movement.receivedOn.isNotEmpty) {
-      fields.add(_buildMinimalField('Received', DateFormatter.formatDateShort(movement.receivedOn)));
-    }
-    if (movement.markedTo.isNotEmpty) {
-      fields.add(_buildMinimalField('Marked To', movement.markedTo));
-    }
-    if (movement.cmsId.isNotEmpty) {
-      fields.add(_buildMinimalField('CMS ID', movement.cmsId));
-    }
-    if (movement.remarks.isNotEmpty) {
-      fields.add(_buildMinimalField('Remarks', movement.remarks));
-    }
-
-    return fields;
-  }
-
-  Widget _buildMinimalField(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
+  Widget _buildDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    String? date,
+    bool isRemark = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.lightSecondaryColor.withOpacity(0.1),
+        ),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 70,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: AppColors.textColor.withOpacity(0.7),
-                fontSize: 10,
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: AppColors.primaryColor,
               ),
-            ),
+              const SizedBox(width: 8),
+              Text(
+                '$label:',
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textColor.withOpacity(0.7),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (date != null) ...[
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    date,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-          Text(
-            ': ',
-            style: TextStyle(
-              color: AppColors.textColor.withOpacity(0.7),
-              fontSize: 10,
-            ),
-          ),
-          Expanded(
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
+              style: AppTypography.bodySmall.copyWith(
                 color: AppColors.textColor,
-                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                height: isRemark ? 1.4 : 1.2,
               ),
+              maxLines: isRemark ? null : 2,
+              overflow: isRemark ? null : TextOverflow.ellipsis,
             ),
           ),
         ],
