@@ -357,15 +357,19 @@ class _FTSInputModalState extends State<FTSInputModal> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Icon(
-            Icons.document_scanner_outlined,
-            size: 32,
-            color: AppColors.primaryColor,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.asset(
+              'assets/images/file-tracking.png',
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -497,7 +501,7 @@ class _FTSInputModalState extends State<FTSInputModal> {
           message,
           style: AppTypography.bodyMedium.copyWith(color: Colors.white),
         ),
-        backgroundColor: isError ? AppColors.redStatus : AppColors.greenStatus,
+        backgroundColor: isError ? AppColors.primaryColor : AppColors.primaryColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
