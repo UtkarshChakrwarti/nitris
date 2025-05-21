@@ -30,6 +30,8 @@ class AppStrings {
   static const String noDataError = 'No data found for this FTS ID';
   static const String invalidDataError = 'Invalid or incomplete data received';
   static const String searchYourPinnedFts = 'Search your pinned FTS';
+  static const String refreshPinnedFts = 'Refresh pinned FTS';
+  static const String noPinnedFtsFound = 'No pinned FTS found';
 }
 
 // Typography Scale
@@ -185,20 +187,18 @@ class Movement {
   }
 }
 
-// Pinned FTS Model
+// Updated Pinned FTS Model to match new API structure
 class PinnedFTS {
   final String ftsId;
   final String fileName;
   final String status;
-  final String duration;
-  final String currentLocation;
+  final String location;
 
   PinnedFTS({
     required this.ftsId,
     required this.fileName,
     required this.status,
-    required this.duration,
-    required this.currentLocation,
+    required this.location,
   });
 
   factory PinnedFTS.fromJson(Map<String, dynamic> json) {
@@ -206,8 +206,7 @@ class PinnedFTS {
       ftsId: json['ftsId'] ?? '',
       fileName: json['fileName'] ?? '',
       status: json['status'] ?? '',
-      duration: json['duration'] ?? '',
-      currentLocation: json['currentLocation'] ?? '',
+      location: json['location'] ?? '',
     );
   }
 }
@@ -258,10 +257,45 @@ class FTSService {
     }
   }
 
-  // Get Pinned FTS
+  // Updated to match new API structure
   static Future<List<PinnedFTS>> getPinnedFTS() async {
     final loginResponse = await LocalStorageService.getLoginResponse();
-    final empCode = loginResponse?.empCode ?? '1000000';
+    var empCode = loginResponse?.empCode;
+    if (empCode == "1000000") {
+      //return 5 dummy data
+      return [
+        PinnedFTS(
+          ftsId: '123456',
+          fileName: 'Test File 1',
+          status: 'Active',
+          location: 'Location 1',
+        ),
+        PinnedFTS(
+          ftsId: '654321',
+          fileName: 'Test File 2',
+          status: 'Pending',
+          location: 'Location 2',
+        ),
+        PinnedFTS(
+          ftsId: '789012',
+          fileName: 'Test File 3',
+          status: 'Closed',
+          location: 'Location 3',
+        ),
+        PinnedFTS(
+          ftsId: '345678',
+          fileName: 'Test File 4',
+          status: 'In Progress',
+          location: 'Location 4',
+        ),
+        PinnedFTS(
+          ftsId: '901234',
+          fileName: 'Test File 5',
+          status: 'Completed',
+          location: 'Location 5',
+        ),
+      ];
+    }
 
     final url = Uri.parse('$_baseUrl/GetPinnedFTS?empcode=$empCode');
 
@@ -363,7 +397,7 @@ class FTSTrackingHelper {
   }
 }
 
-// FTS Input Screen (Dedicated Page)
+// FTS Input Screen (Dedicated Page) - Redesigned
 class FTSInputScreen extends StatefulWidget {
   const FTSInputScreen({super.key});
 
@@ -420,117 +454,145 @@ class _FTSInputScreenState extends State<FTSInputScreen> {
           onPressed: () => Navigator.pop(context),
           color: Colors.white,
         ),
+        actions: [
+          // Refresh button in app bar
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: AppStrings.refreshPinnedFts,
+            onPressed: _loadPinnedFTS,
+            color: Colors.white,
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildFTSInput(),
-            _buildCheckButton(),
-            _buildPinnedSection(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
-      child: Column(
+      body: Column(
         children: [
-          const SizedBox(height: 20),
-          Text(
-            AppStrings.enterFtsDescription,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textColor.withOpacity(0.7),
-            ),
-            textAlign: TextAlign.center,
+          _buildTopSection(),
+          Expanded(
+            child: _buildPinnedSection(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFTSInput() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: TextField(
-        controller: _ftsController,
-        style: AppTypography.bodyLarge,
-        decoration: InputDecoration(
-          labelText: AppStrings.enterFtsNumber,
-          labelStyle: AppTypography.bodyMedium.copyWith(
-            color: AppColors.primaryColor,
-          ),
-          prefixIcon: const Icon(
-            Icons.numbers_outlined,
-            color: AppColors.primaryColor,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.primaryColor),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide:
-                BorderSide(color: AppColors.primaryColor.withOpacity(0.5)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide:
-                const BorderSide(color: AppColors.primaryColor, width: 2),
-          ),
-          filled: true,
-          fillColor: AppColors.surface,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+  // Compact top section with input and button
+  Widget _buildTopSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(16),
         ),
-        cursorColor: AppColors.primaryColor,
-        textInputAction: TextInputAction.done,
-        onSubmitted: (_) => _trackFTS(),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildCheckButton() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: _isLoading ? null : _trackFTS,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryColor,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+      child: Column(
+        children: [
+          // Description text
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              AppStrings.enterFtsDescription,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textColor.withOpacity(0.7),
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
-          child: _isLoading
-              ? const SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          
+          // Input field with check button
+          Row(
+            children: [
+              // Input field
+                Expanded(
+                child: TextField(
+                  controller: _ftsController,
+                  style: AppTypography.bodyLarge,
+                  decoration: InputDecoration(
+                  hintText: 'FTS ID',
+                  hintStyle: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textColor.withOpacity(0.5),
                   ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.search, size: 20),
-                    const SizedBox(width: 12),
-                    Text(
-                      AppStrings.checkStatus,
-                      style: AppTypography.button.copyWith(color: Colors.white),
-                    ),
-                  ],
+                  prefixIcon: const Icon(
+                    Icons.numbers_outlined,
+                    color: AppColors.primaryColor,
+                  ),
+                  suffixIcon: _ftsController.text.isNotEmpty
+                    ? IconButton(
+                      icon: const Icon(Icons.clear, color: AppColors.primaryColor),
+                      onPressed: () {
+                        setState(() {
+                        _ftsController.clear();
+                        });
+                      },
+                      )
+                    : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.primaryColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide:
+                      BorderSide(color: AppColors.primaryColor.withOpacity(0.5)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide:
+                      const BorderSide(color: AppColors.primaryColor, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  cursorColor: AppColors.primaryColor,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _trackFTS(),
+                  onChanged: (_) {
+                  setState(() {});
+                  },
                 ),
-        ),
+                ),
+              
+              // Check button
+              Container(
+                margin: const EdgeInsets.only(left: 12),
+                width: 50,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _trackFTS,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.search, size: 20),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -540,36 +602,56 @@ class _FTSInputScreenState extends State<FTSInputScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          child: Text(
-            AppStrings.searchYourPinnedFts,
-            style: AppTypography.headline3.copyWith(
-              color: AppColors.textColor,
-            ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppStrings.searchYourPinnedFts,
+                style: AppTypography.headline3.copyWith(
+                  color: AppColors.textColor,
+                  fontSize: 16,
+                ),
+              ),
+              if (_isPinnedLoading)
+                const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                  ),
+                ),
+            ],
           ),
         ),
-        if (_isPinnedLoading)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
+        if (_isPinnedLoading && _pinnedFTSItems.isEmpty)
+          const Expanded(
+            child: Center(
               child: CircularProgressIndicator(
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
               ),
             ),
           )
         else if (_pinnedFTSItems.isEmpty)
-          _buildEmptyPinnedState()
+          Expanded(child: _buildEmptyPinnedState())
         else
-          ..._pinnedFTSItems.map((item) => _buildPinnedItem(item)),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              itemCount: _pinnedFTSItems.length,
+              itemBuilder: (context, index) {
+                return _buildPinnedItem(_pinnedFTSItems[index]);
+              },
+            ),
+          ),
       ],
     );
   }
 
   Widget _buildEmptyPinnedState() {
     return Container(
-      margin: const EdgeInsets.all(24),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -580,6 +662,7 @@ class _FTSInputScreenState extends State<FTSInputScreen> {
       ),
       child: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.bookmark_outline,
@@ -588,7 +671,7 @@ class _FTSInputScreenState extends State<FTSInputScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No pinned FTS found',
+              AppStrings.noPinnedFtsFound,
               style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textMuted,
                 fontStyle: FontStyle.italic,
@@ -600,188 +683,124 @@ class _FTSInputScreenState extends State<FTSInputScreen> {
     );
   }
 
+  // Redesigned pinned item with a cleaner layout
   Widget _buildPinnedItem(PinnedFTS item) {
-    // Format FTS ID to match display pattern
-    String formattedId = item.ftsId;
-    if (!formattedId.startsWith('FTS ')) {
-      formattedId = 'FTS $formattedId';
-    }
+    return Card(
+      margin: const EdgeInsets.only(top: 10),
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          //set ftsId in text field
+          _ftsController.text = item.ftsId;
+          _trackFTS();
+        },
+        splashColor: AppColors.secondaryColor,
+        focusColor: AppColors.secondaryColor,
+        highlightColor: AppColors.secondaryColor,
 
-    return InkWell(
-      onTap: () {
-        _ftsController.text = item.ftsId.replaceAll('FTS ', '');
-        _trackFTS();
-      },
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Document Icon
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEEFEA),
-                borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Document Icon
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEEFEA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.description_outlined,
+                  color: AppColors.primaryColor,
+                  size: 20,
+                ),
               ),
-              child: const Icon(
-                Icons.description_outlined,
-                color: AppColors.primaryColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 16),
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.fileName,
-                    style: AppTypography.bodyLarge.copyWith(
-                      color: AppColors.textColor,
-                      fontWeight: FontWeight.w600,
+              const SizedBox(width: 12),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.fileName,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        'FTS ID: ',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.primaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        item.ftsId,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textColor.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  if (item.currentLocation.isNotEmpty) ...[
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
-                          'Location: ',
+                          'FTS: ${item.ftsId}',
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.primaryColor,
-                            fontWeight: FontWeight.w600,
+                            color: AppColors.textColor.withOpacity(0.7),
                           ),
                         ),
-                        Expanded(
-                          child: Text(
-                            item.currentLocation,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textColor.withOpacity(0.7),
+                        const Spacer(),
+                        if (item.status.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(item.status),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            child: Text(
+                              item.status,
+                              style: AppTypography.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  // Status badges
-                  Row(
-                    children: [
-                      if (item.duration.isNotEmpty)
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEEFEA),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.schedule_outlined,
-                                  size: 12,
-                                  color: AppColors.primaryColor,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    item.duration,
-                                    style: AppTypography.caption.copyWith(
-                                      color: AppColors.primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                    if (item.location.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 12,
+                            color: AppColors.primaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              item.location,
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.textColor.withOpacity(0.7),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                      if (item.duration.isNotEmpty && item.status.isNotEmpty)
-                        const SizedBox(width: 8),
-                      if (item.status.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(item.status),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            item.status,
-                            style: AppTypography.caption.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                        ],
+                      ),
                     ],
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Color _getStatusColor(String status) {
-    status = status.toLowerCase();
-
-    if (status.contains('operational') ||
-        status.contains('active') ||
-        status.isEmpty) {
-      return const Color(0xFF5CB85C); // Green for active status
-    } else if (status.contains('pending') || status.contains('review')) {
-      return const Color(0xFFFFAA00); // Amber for pending status
-    } else if (status.contains('close') || status.contains('completed')) {
-      return const Color(0xFF6C757D); // Gray for closed status
-    } else {
-      return const Color(0xFF5CB85C); // Default green
-    }
+    return AppColors.greenStatus; // Default to green for simplicity
   }
 
+  // Updated to clear text field when returning from status screen
   Future<void> _trackFTS() async {
     if (_ftsController.text.trim().isEmpty) {
       _showSnackBar(AppStrings.enterFtsNumberError, isError: true);
@@ -795,7 +814,16 @@ class _FTSInputScreenState extends State<FTSInputScreen> {
     try {
       final ftsData = await FTSService.trackFTS(_ftsController.text.trim());
       if (mounted) {
-        FTSTrackingHelper.navigateToFTSStatus(context, ftsData);
+        // Navigate to status screen and clear input when returning
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FTSStatusScreen(ftsData: ftsData),
+          ),
+        ).then((_) {
+          // Clear text field when returning
+          _ftsController.clear();
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -817,8 +845,7 @@ class _FTSInputScreenState extends State<FTSInputScreen> {
           message,
           style: AppTypography.bodyMedium.copyWith(color: Colors.white),
         ),
-        backgroundColor:
-            isError ? const Color(0xFFE74C3C) : AppColors.primaryColor,
+        backgroundColor: AppColors.primaryColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -1268,7 +1295,19 @@ class FileHeaderCard extends StatelessWidget {
   }
 
   Color _getStatusColor(String status) {
-    return const Color(0xFF5CB85C); // Default green
+    status = status.toLowerCase();
+
+    if (status.contains('operational') ||
+        status.contains('active') ||
+        status.isEmpty) {
+      return const Color(0xFF5CB85C); // Green for active status
+    } else if (status.contains('pending') || status.contains('review')) {
+      return const Color(0xFFFFAA00); // Amber for pending status
+    } else if (status.contains('close') || status.contains('completed')) {
+      return const Color(0xFF6C757D); // Gray for closed status
+    } else {
+      return const Color(0xFF5CB85C); // Default green
+    }
   }
 
   Widget _buildJourneyVisualization(List<Movement> movements) {
@@ -1650,26 +1689,6 @@ class CompactTimelineItem extends StatelessWidget {
   Widget _buildMovementDetails() {
     List<Widget> details = [];
 
-    // Sent By & Sent To
-    if (movement.sentBy.isNotEmpty) {
-      details.add(_buildDetailRow(
-        icon: Icons.send_outlined,
-        label: 'From',
-        value: TextUtils.cleanField(movement.sentBy),
-        date: movement.sentOn.isNotEmpty
-            ? DateFormatter.formatDateShort(movement.sentOn)
-            : null,
-      ));
-    }
-
-    if (movement.sentTo.isNotEmpty) {
-      details.add(_buildDetailRow(
-        icon: Icons.call_received_outlined,
-        label: 'To',
-        value: TextUtils.cleanField(movement.sentTo),
-        date: null,
-      ));
-    }
 
     // Received By
     if (movement.receivedBy.isNotEmpty) {
@@ -1692,6 +1711,28 @@ class CompactTimelineItem extends StatelessWidget {
         date: null,
       ));
     }
+
+        // Sent By & Sent To
+    if (movement.sentBy.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.send_outlined,
+        label: 'From',
+        value: TextUtils.cleanField(movement.sentBy),
+        date: movement.sentOn.isNotEmpty
+            ? DateFormatter.formatDateShort(movement.sentOn)
+            : null,
+      ));
+    }
+
+    if (movement.sentTo.isNotEmpty) {
+      details.add(_buildDetailRow(
+        icon: Icons.call_received_outlined,
+        label: 'To',
+        value: TextUtils.cleanField(movement.sentTo),
+        date: null,
+      ));
+    }
+
 
     // CMS ID
     if (movement.cmsId.isNotEmpty) {
