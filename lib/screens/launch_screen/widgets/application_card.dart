@@ -139,7 +139,7 @@ class ApplicationCard extends StatelessWidget {
         break;
 
       case 'File':
-        FTSTrackingHelper.navigateToFTSInput(context);
+        FTSNavigator.navigateToFTSInput(context);
         break;
 
       default:
