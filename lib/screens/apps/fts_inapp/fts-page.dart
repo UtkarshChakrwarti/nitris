@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'dart:ui';
+import 'package:share_plus/share_plus.dart';
 import 'package:nitris/core/constants/app_colors.dart';
 import 'package:nitris/core/services/local/local_storage_service.dart';
 
@@ -13,7 +14,8 @@ import 'package:nitris/core/services/local/local_storage_service.dart';
 class AppStrings {
   static const String appTitle = 'FTS Tracking';
   static const String enterFtsNumber = 'Enter FTS Number';
-  static const String enterFtsDescription = 'Please enter your FTS ID to track the status';
+  static const String enterFtsDescription =
+      'Please enter your FTS ID to track the status';
   static const String checkStatus = 'Check Status';
   static const String tapToTrack = 'Tap to Track FTS';
   static const String ftsStatus = 'FTS Status';
@@ -25,7 +27,8 @@ class AppStrings {
   static const String stay = 'No';
   static const String goBack = 'Yes';
   static const String enterFtsNumberError = 'Please enter FTS number';
-  static const String networkError = 'Network error: Unable to connect to server';
+  static const String networkError =
+      'Network error: Unable to connect to server';
   static const String fetchError = 'Failed to fetch FTS data';
   static const String noDataError = 'No data found for this FTS ID';
   static const String invalidDataError = 'Invalid or incomplete data received';
@@ -33,6 +36,9 @@ class AppStrings {
   static const String refreshPinnedFts = 'Refresh pinned FTS';
   static const String noPinnedFtsFound = 'No pinned FTS found';
   static const String loadingFtsData = 'Loading FTS data...';
+  static const String shareTitle = 'Share FTS';
+  static const String shareError = 'Unable to share at this time';
+  static const String noLinkAvailable = 'No link available to share';
 }
 
 /// Typography styles used throughout the FTS tracking module
@@ -112,6 +118,7 @@ class FTSResponse {
   final String closedOn;
   final String lifespan;
   final String closingComments;
+  final String link;
   final List<Movement> movements;
 
   FTSResponse({
@@ -130,6 +137,7 @@ class FTSResponse {
     required this.closedOn,
     required this.lifespan,
     required this.closingComments,
+    required this.link,
     required this.movements,
   });
 
@@ -150,6 +158,7 @@ class FTSResponse {
       closedOn: json['closedOn'] ?? '',
       lifespan: json['lifespan'] ?? '',
       closingComments: json['closingComments'] ?? '',
+      link: json['link'] ?? '',
       movements: (json['movements'] as List<dynamic>?)
               ?.map((item) => Movement.fromJson(item))
               .toList() ??
@@ -243,7 +252,8 @@ class FTSService {
 
       if (response.statusCode == 200) {
         final responseText = response.body;
-        if (responseText.isEmpty || responseText.trim().toLowerCase() == 'null') {
+        if (responseText.isEmpty ||
+            responseText.trim().toLowerCase() == 'null') {
           throw Exception(AppStrings.noDataError);
         }
 
@@ -259,7 +269,8 @@ class FTSService {
 
         return ftsResponse;
       } else {
-        throw Exception('${AppStrings.fetchError}. Status: ${response.statusCode}');
+        throw Exception(
+            '${AppStrings.fetchError}. Status: ${response.statusCode}');
       }
     } catch (e) {
       if (e is Exception) {
@@ -273,7 +284,7 @@ class FTSService {
   static Future<List<PinnedFTS>> getPinnedFTS() async {
     final loginResponse = await LocalStorageService.getLoginResponse();
     var empCode = loginResponse?.empCode;
-    
+
     // Return dummy data for demo purposes
     if (empCode == "1000000") {
       return _getDummyPinnedFTS();
@@ -292,7 +303,8 @@ class FTSService {
 
       if (response.statusCode == 200) {
         final responseText = response.body;
-        if (responseText.isEmpty || responseText.trim().toLowerCase() == 'null') {
+        if (responseText.isEmpty ||
+            responseText.trim().toLowerCase() == 'null') {
           return [];
         }
 
@@ -303,14 +315,15 @@ class FTSService {
 
         return jsonData.map((item) => PinnedFTS.fromJson(item)).toList();
       } else {
-        throw Exception('${AppStrings.fetchError}. Status: ${response.statusCode}');
+        throw Exception(
+            '${AppStrings.fetchError}. Status: ${response.statusCode}');
       }
     } catch (e) {
       // Just return empty list on error, to not disrupt the UI flow
       return [];
     }
   }
-  
+
   /// Returns dummy pinned FTS items for demo purposes
   static List<PinnedFTS> _getDummyPinnedFTS() {
     return [
@@ -399,16 +412,63 @@ class StatusHelper {
   /// Gets color for status based on status text
   static Color getStatusColor(String status) {
     status = status.toLowerCase();
+    return const Color(0xFF5CB85C); // Default green
+  }
+}
 
-    if (status.contains('operational') || status.contains('active') || status.isEmpty) {
-      return const Color(0xFF5CB85C); // Green for active status
-    } else if (status.contains('pending') || status.contains('review')) {
-      return const Color(0xFFFFAA00); // Amber for pending status
-    } else if (status.contains('close') || status.contains('completed')) {
-      return const Color(0xFF6C757D); // Gray for closed status
-    } else {
-      return const Color(0xFF5CB85C); // Default green
+/// Helper for sharing FTS data
+class ShareHelper {
+  /// Shares FTS information with proper iOS/iPad support
+  static Future<void> shareFTS(
+      BuildContext context, FTSResponse ftsData) async {
+    try {
+      // Create share text
+      String shareText = _buildShareText(ftsData);
+
+      // Get the render box for iOS/iPad positioning
+      final RenderBox? box = context.findRenderObject() as RenderBox?;
+
+      if (box != null) {
+        // Share with position for iOS/iPad
+        await Share.share(
+          shareText,
+          subject: 'FTS ${ftsData.ftsId} - ${ftsData.fileName}',
+          sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
+        );
+      } else {
+        // Fallback for when box is null
+        await Share.share(
+          shareText,
+          subject: 'FTS ${ftsData.ftsId} - ${ftsData.fileName}',
+        );
+      }
+    } catch (e) {
+      // Show error message if sharing fails
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppStrings.shareError,
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
     }
+  }
+
+  /// Builds the share text content (compact, professional, no emojis)
+  static String _buildShareText(FTSResponse ftsData) {
+    final buffer = StringBuffer();
+    buffer.writeln('FTS Tracking Information');
+    buffer.writeln('File Name: ${ftsData.fileName}');
+    if (ftsData.link.isNotEmpty) buffer.writeln('Details: ${ftsData.link}');
+    return buffer.toString();
   }
 }
 
@@ -421,7 +481,8 @@ class FTSNavigator {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const FTSInputScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const FTSInputScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(
@@ -440,11 +501,13 @@ class FTSNavigator {
   }
 
   /// Navigate to FTS status screen
-  static Future<void> navigateToFTSStatus(BuildContext context, FTSResponse ftsData) async {
+  static Future<void> navigateToFTSStatus(
+      BuildContext context, FTSResponse ftsData) async {
     await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => FTSStatusScreen(ftsData: ftsData),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            FTSStatusScreen(ftsData: ftsData),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
@@ -455,43 +518,46 @@ class FTSNavigator {
       ),
     );
   }
-  
+
   /// Navigate directly to FTS status screen by FTS ID
-  static Future<void> navigateToFTSStatusByID(BuildContext context, String ftsId) async {
+  static Future<void> navigateToFTSStatusByID(
+      BuildContext context, String ftsId) async {
     // Show loading dialog
     _showLoadingDialog(context);
-    
+
     try {
       final ftsData = await FTSService.trackFTS(ftsId);
-      
+
       // Close loading dialog
       Navigator.of(context).pop();
-      
+
       // Navigate to status screen
       await navigateToFTSStatus(context, ftsData);
     } catch (e) {
       // Close loading dialog
       Navigator.of(context).pop();
-      
+
       // Show error dialog
       _showErrorDialog(context, e.toString());
     }
   }
-  
+
   /// Shows loading dialog
   static void _showLoadingDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const LoadingDialog(message: AppStrings.loadingFtsData),
+      builder: (context) =>
+          const LoadingDialog(message: AppStrings.loadingFtsData),
     );
   }
-  
+
   /// Shows error dialog
   static void _showErrorDialog(BuildContext context, String error) {
     showDialog(
       context: context,
-      builder: (context) => const ErrorDialog(error: "Something went wrong Please try again later"),
+      builder: (context) => const ErrorDialog(
+          error: "Something went wrong Please try again later"),
     );
   }
 }
@@ -501,12 +567,12 @@ class FTSNavigator {
 /// Loading dialog widget
 class LoadingDialog extends StatelessWidget {
   final String message;
-  
+
   const LoadingDialog({
     super.key,
     required this.message,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -535,12 +601,12 @@ class LoadingDialog extends StatelessWidget {
 /// Error dialog widget
 class ErrorDialog extends StatelessWidget {
   final String error;
-  
+
   const ErrorDialog({
     super.key,
     required this.error,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -589,13 +655,13 @@ class ErrorDialog extends StatelessWidget {
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
   final String message;
-  
+
   const EmptyStateWidget({
     super.key,
     required this.icon,
     required this.message,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -639,7 +705,7 @@ class CollapsibleSection extends StatelessWidget {
   final Widget content;
   final bool isExpanded;
   final VoidCallback onTap;
-  
+
   const CollapsibleSection({
     super.key,
     required this.title,
@@ -648,7 +714,7 @@ class CollapsibleSection extends StatelessWidget {
     required this.isExpanded,
     required this.onTap,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -703,7 +769,9 @@ class CollapsibleSection extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               child: content,
             ),
-            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             duration: AnimationDurations.medium,
           ),
         ],
@@ -718,13 +786,13 @@ class CollapsibleSection extends StatelessWidget {
 class PinnedFTSItem extends StatelessWidget {
   final PinnedFTS item;
   final VoidCallback onTap;
-  
+
   const PinnedFTSItem({
     super.key,
     required this.item,
     required this.onTap,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -783,7 +851,8 @@ class PinnedFTSItem extends StatelessWidget {
                         const Spacer(),
                         if (item.status.isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: StatusHelper.getStatusColor(item.status),
                               borderRadius: BorderRadius.circular(8),
@@ -837,12 +906,12 @@ class PinnedFTSItem extends StatelessWidget {
 /// Widget for displaying file header
 class FileHeaderCard extends StatelessWidget {
   final FTSResponse ftsData;
-  
+
   const FileHeaderCard({
     super.key,
     required this.ftsData,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -924,7 +993,8 @@ class FileHeaderCard extends StatelessWidget {
               if (ftsData.lifespan.isNotEmpty)
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFEEFEA),
                       borderRadius: BorderRadius.circular(12),
@@ -940,10 +1010,11 @@ class FileHeaderCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Duration: ${TextUtils.cleanText(ftsData.lifespan)}',
+                            TextUtils.cleanText(ftsData.lifespan),
                             style: AppTypography.caption.copyWith(
                               color: AppColors.primaryColor,
                               fontWeight: FontWeight.w600,
+                              fontSize: 10,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -957,7 +1028,8 @@ class FileHeaderCard extends StatelessWidget {
 
               // Status badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: StatusHelper.getStatusColor(ftsData.status),
                   borderRadius: BorderRadius.circular(12),
@@ -974,7 +1046,8 @@ class FileHeaderCard extends StatelessWidget {
           ),
 
           // Journey visualization
-          if (ftsData.movements.isNotEmpty && _hasValidMovements(ftsData.movements)) ...[
+          if (ftsData.movements.isNotEmpty &&
+              _hasValidMovements(ftsData.movements)) ...[
             const SizedBox(height: 20),
             _buildJourneyVisualization(ftsData.movements),
           ],
@@ -982,11 +1055,11 @@ class FileHeaderCard extends StatelessWidget {
       ),
     );
   }
-  
+
   bool _hasValidMovements(List<Movement> movements) {
     return movements.any((m) => m.sentBy.isNotEmpty && m.sentTo.isNotEmpty);
   }
-  
+
   Widget _buildJourneyVisualization(List<Movement> movements) {
     // Extract first and last valid movement for visualization
     Movement? firstMovement;
@@ -1113,7 +1186,7 @@ class FileHeaderCard extends StatelessWidget {
       ],
     );
   }
-  
+
   String _extractDeptCode(String dept) {
     // Extract department code, e.g. "CAT : Centre for..." -> "CAT"
     if (dept.contains(':')) {
@@ -1137,12 +1210,12 @@ class FileHeaderCard extends StatelessWidget {
 /// Widget for displaying file details
 class FileDetailsCard extends StatelessWidget {
   final FTSResponse ftsData;
-  
+
   const FileDetailsCard({
     super.key,
     required this.ftsData,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1158,7 +1231,8 @@ class FileDetailsCard extends StatelessWidget {
         children: [
           for (int i = 0; i < _buildDetailsList().length; i += 2)
             Padding(
-              padding: EdgeInsets.only(bottom: i < _buildDetailsList().length - 2 ? 12 : 0),
+              padding: EdgeInsets.only(
+                  bottom: i < _buildDetailsList().length - 2 ? 12 : 0),
               child: Row(
                 children: [
                   Expanded(
@@ -1184,7 +1258,7 @@ class FileDetailsCard extends StatelessWidget {
       ),
     );
   }
-  
+
   List<Map<String, String>> _buildDetailsList() {
     return [
       {'label': 'File Type', 'value': ftsData.fileType},
@@ -1194,17 +1268,23 @@ class FileDetailsCard extends StatelessWidget {
       {'label': 'Department', 'value': ftsData.createdDept},
       {'label': 'Station', 'value': ftsData.station},
       {'label': 'Status', 'value': ftsData.status},
-      {'label': 'Created On', 'value': DateFormatter.formatDate(ftsData.createdOn)},
+      {
+        'label': 'Created On',
+        'value': DateFormatter.formatDate(ftsData.createdOn)
+      },
       {'label': 'Created By', 'value': ftsData.createdBy},
       if (ftsData.closedOn.isNotEmpty)
-        {'label': 'Closed On', 'value': DateFormatter.formatDate(ftsData.closedOn)},
+        {
+          'label': 'Closed On',
+          'value': DateFormatter.formatDate(ftsData.closedOn)
+        },
       if (ftsData.closedBy.isNotEmpty)
         {'label': 'Closed By', 'value': ftsData.closedBy},
       if (ftsData.closingComments.isNotEmpty)
         {'label': 'Closing Comments', 'value': ftsData.closingComments},
     ];
   }
-  
+
   Widget _buildDetailItem(String label, String value) {
     final cleanValue = TextUtils.cleanText(value);
     if (cleanValue.isEmpty || cleanValue == 'N/A') {
@@ -1241,22 +1321,22 @@ class FileDetailsCard extends StatelessWidget {
 /// Widget for displaying movement timeline
 class MovementTimeline extends StatelessWidget {
   final List<Movement> movements;
-  
+
   const MovementTimeline({
     super.key,
     required this.movements,
   });
-  
+
   @override
   Widget build(BuildContext context) {
-    return movements.isEmpty 
-      ? const EmptyStateWidget(
-          icon: Icons.timeline_outlined,
-          message: AppStrings.noMovementHistory,
-        ) 
-      : _buildCompactTimeline();
+    return movements.isEmpty
+        ? const EmptyStateWidget(
+            icon: Icons.timeline_outlined,
+            message: AppStrings.noMovementHistory,
+          )
+        : _buildCompactTimeline();
   }
-  
+
   Widget _buildCompactTimeline() {
     return Column(
       children: movements.asMap().entries.map((entry) {
@@ -1278,14 +1358,14 @@ class CompactTimelineItem extends StatelessWidget {
   final Movement movement;
   final int position;
   final bool isLast;
-  
+
   const CompactTimelineItem({
     super.key,
     required this.movement,
     required this.position,
     required this.isLast,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final hasData = movement.sentBy.isNotEmpty ||
@@ -1319,7 +1399,7 @@ class CompactTimelineItem extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildStepHeader() {
     return Row(
       children: [
@@ -1368,7 +1448,7 @@ class CompactTimelineItem extends StatelessWidget {
       ],
     );
   }
-  
+
   List<Widget> _buildMovementDetails() {
     List<Widget> details = [];
 
@@ -1438,7 +1518,7 @@ class CompactTimelineItem extends StatelessWidget {
 
     return details;
   }
-  
+
   Widget _buildDetailRow({
     required IconData icon,
     required String label,
@@ -1477,7 +1557,8 @@ class CompactTimelineItem extends StatelessWidget {
               if (date != null) ...[
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -1524,7 +1605,8 @@ class FTSInputScreen extends StatefulWidget {
   State<FTSInputScreen> createState() => _FTSInputScreenState();
 }
 
-class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProviderStateMixin {
+class _FTSInputScreenState extends State<FTSInputScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _ftsController = TextEditingController();
   final FocusNode _ftsFocusNode = FocusNode();
   bool _isLoading = false;
@@ -1646,7 +1728,7 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
               textAlign: TextAlign.center,
             ),
           ),
-          
+
           // Input field with check button
           Row(
             children: [
@@ -1666,30 +1748,35 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
                       color: AppColors.primaryColor,
                     ),
                     suffixIcon: _ftsController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: AppColors.primaryColor),
-                          onPressed: () {
-                            setState(() {
-                              _ftsController.clear();
-                            });
-                          },
-                        )
-                      : null,
+                        ? IconButton(
+                            icon: const Icon(Icons.clear,
+                                color: AppColors.primaryColor),
+                            onPressed: () {
+                              setState(() {
+                                _ftsController.clear();
+                              });
+                            },
+                          )
+                        : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primaryColor),
+                      borderSide:
+                          const BorderSide(color: AppColors.primaryColor),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: AppColors.primaryColor.withOpacity(0.5)),
+                      borderSide: BorderSide(
+                          color: AppColors.primaryColor.withOpacity(0.5)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primaryColor, width: 2),
+                      borderSide: const BorderSide(
+                          color: AppColors.primaryColor, width: 2),
                     ),
                     filled: true,
                     fillColor: AppColors.surface,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                   ),
                   cursorColor: AppColors.primaryColor,
                   textInputAction: TextInputAction.search,
@@ -1699,7 +1786,7 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
                   },
                 ),
               ),
-              
+
               // Check button
               TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0.8, end: 1.0),
@@ -1724,15 +1811,16 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
                           ),
                         ),
                         child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Icon(Icons.search, size: 20),
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : const Icon(Icons.search, size: 20),
                       ),
                     ),
                   );
@@ -1767,7 +1855,8 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
                   width: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
                   ),
                 ),
             ],
@@ -1777,7 +1866,8 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
           const Expanded(
             child: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
               ),
             ),
           )
@@ -1796,7 +1886,8 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
               itemBuilder: (context, index) {
                 return PinnedFTSItem(
                   item: _pinnedFTSItems[index],
-                  onTap: () => _navigateToFTSStatus(_pinnedFTSItems[index].ftsId),
+                  onTap: () =>
+                      _navigateToFTSStatus(_pinnedFTSItems[index].ftsId),
                 );
               },
             ),
@@ -1819,7 +1910,8 @@ class _FTSInputScreenState extends State<FTSInputScreen> with SingleTickerProvid
     }
 
     _ftsFocusNode.unfocus();
-    await FTSNavigator.navigateToFTSStatusByID(context, _ftsController.text.trim());
+    await FTSNavigator.navigateToFTSStatusByID(
+        context, _ftsController.text.trim());
     // Clear text field after navigating
     _ftsController.clear();
   }
@@ -1858,7 +1950,8 @@ class FTSStatusScreen extends StatefulWidget {
   State<FTSStatusScreen> createState() => _FTSStatusScreenState();
 }
 
-class _FTSStatusScreenState extends State<FTSStatusScreen> with SingleTickerProviderStateMixin {
+class _FTSStatusScreenState extends State<FTSStatusScreen>
+    with SingleTickerProviderStateMixin {
   bool _isFileDetailsExpanded = false;
   bool _isMovementTimelineExpanded = false;
   late AnimationController _animationController;
@@ -1904,6 +1997,19 @@ class _FTSStatusScreenState extends State<FTSStatusScreen> with SingleTickerProv
               onPressed: () => _onWillPop(context),
               color: Colors.white,
             ),
+            actions: [
+              // Share Button with Builder for iOS/iPad compatibility
+              Builder(
+                builder: (BuildContext context) {
+                  return IconButton(
+                    icon: const Icon(Icons.share),
+                    tooltip: AppStrings.shareTitle,
+                    onPressed: () => _onShare(context),
+                    color: Colors.white,
+                  );
+                },
+              ),
+            ],
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -1938,10 +2044,12 @@ class _FTSStatusScreenState extends State<FTSStatusScreen> with SingleTickerProv
                   isExpanded: _isMovementTimelineExpanded,
                   onTap: () {
                     setState(() {
-                      _isMovementTimelineExpanded = !_isMovementTimelineExpanded;
+                      _isMovementTimelineExpanded =
+                          !_isMovementTimelineExpanded;
                     });
                   },
-                  content: MovementTimeline(movements: widget.ftsData.movements),
+                  content:
+                      MovementTimeline(movements: widget.ftsData.movements),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -1952,64 +2060,93 @@ class _FTSStatusScreenState extends State<FTSStatusScreen> with SingleTickerProv
     );
   }
 
+  /// Handle share button tap with iOS/iPad compatibility
+  Future<void> _onShare(BuildContext context) async {
+    // Check if there's content to share
+    if (widget.ftsData.link.isEmpty && widget.ftsData.fileName.isEmpty) {
+      _showSnackBar(AppStrings.noLinkAvailable, isError: true);
+      return;
+    }
+
+    // Use ShareHelper to handle the sharing with proper iOS/iPad positioning
+    await ShareHelper.shareFTS(context, widget.ftsData);
+  }
+
   Future<bool> _onWillPop(BuildContext context) async {
     return await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          AppStrings.goBackTitle,
-          style: AppTypography.headline3.copyWith(
-            color: AppColors.textColor,
-          ),
-        ),
-        content: Text(
-          AppStrings.goBackMessage,
-          style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.textColor.withOpacity(0.7),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: AppColors.textColor.withOpacity(0.7),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          context: context,
+          builder: (context) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              AppStrings.goBackTitle,
+              style: AppTypography.headline3.copyWith(
+                color: AppColors.textColor,
               ),
             ),
-            child: Text(
-              AppStrings.stay,
-              style: AppTypography.button.copyWith(
+            content: Text(
+              AppStrings.goBackMessage,
+              style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textColor.withOpacity(0.7),
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-              Navigator.of(context).pop();
-            },
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: AppColors.primaryColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppColors.textColor.withOpacity(0.7),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  AppStrings.stay,
+                  style: AppTypography.button.copyWith(
+                    color: AppColors.textColor.withOpacity(0.7),
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              AppStrings.goBack,
-              style: AppTypography.button.copyWith(
-                color: AppColors.primaryColor,
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                  Navigator.of(context).pop();
+                },
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppColors.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  AppStrings.goBack,
+                  style: AppTypography.button.copyWith(
+                    color: AppColors.primaryColor,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
-  
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+        ),
+        backgroundColor: isError ? Colors.red : AppColors.primaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
