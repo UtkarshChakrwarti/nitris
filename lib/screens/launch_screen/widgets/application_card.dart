@@ -106,7 +106,7 @@ class ApplicationCard extends StatelessWidget {
       case 'Live Class':
         route = employeeType == 'student'
             ? '/studentAttendance'
-            : '/attendanceHome';
+            : '/attendanceHome'; //for teachers
         break;
 
       case 'Hello':
